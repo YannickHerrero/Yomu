@@ -1,13 +1,17 @@
-import { Box } from '@/components/ui/box';
-import { Text } from '@/components/ui/text';
-import { Center } from '@/components/ui/center';
+import { View, StyleSheet, PlatformColor } from 'react-native';
+import { Stopwatch } from '@/components/session/Stopwatch';
 
 export default function SessionScreen() {
   return (
-    <Box className="flex-1 bg-background-0">
-      <Center className="flex-1">
-        <Text className="text-typography-500">Session Stopwatch</Text>
-      </Center>
-    </Box>
+    <View style={styles.container}>
+      <Stopwatch />
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PlatformColor('systemBackground'),
+  },
+});
