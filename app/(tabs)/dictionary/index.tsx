@@ -6,8 +6,9 @@ import { SearchBar, type SearchBarRef } from '@/components/dictionary/SearchBar'
 import { DictionaryEntry } from '@/components/dictionary/DictionaryEntry';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { useDictionaryStore } from '@/stores/useDictionaryStore';
+import { useDeckStore } from '@/stores/useDeckStore';
 import { searchDictionary, getInDeckStatus } from '@/database/dictionary';
-import { addCardToDeck, removeCardByDictionaryId } from '@/database/deck';
+import { removeCardByDictionaryId } from '@/database/deck';
 import type { DictionaryEntry as DictionaryEntryType } from '@/database/dictionary';
 
 const SEARCH_DEBOUNCE_MS = 150;
@@ -32,6 +33,8 @@ export default function DictionaryScreen() {
     removeFromDeckIds,
     clearResults,
   } = useDictionaryStore();
+  
+  const { addCard } = useDeckStore();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offsetRef = useRef(0);
@@ -142,14 +145,14 @@ export default function DictionaryScreen() {
       if (!db) return;
 
       try {
-        await addCardToDeck(db, entry.id);
+        await addCard(db, entry.id);
         addToDeckIds(entry.id);
       } catch (err) {
         console.error('Failed to add to deck:', err);
         throw err;
       }
     },
-    [db, addToDeckIds]
+    [db, addCard, addToDeckIds]
   );
 
   // Handle remove from deck
