@@ -244,11 +244,14 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     // Calculate new stage
     const newStage = calculateNewStage(card.stage, isCorrect, newIncorrectCount);
 
-    // Update database
-    await updateCardAfterReview(db, card.id, newStage, isCorrect ? 0 : newIncorrectCount);
-
-    // Record the review in history
+    // Record review in history (but don't update card stage/due date yet if incorrect)
     await recordReview(db, card.id, card.stage, newStage, isCorrect, newIncorrectCount);
+
+    // Only update card in database if answer is correct
+    // If incorrect, the card stays "due" and will be re-queued in this session
+    if (isCorrect) {
+      await updateCardAfterReview(db, card.id, newStage, 0);
+    }
 
     // Update session state
     const newResults = { ...session.results };
@@ -272,8 +275,9 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     let nextCard: DeckCard | null = null;
 
     if (!isCorrect) {
-      // Wrong answer: add card to end of queue (with updated stage)
-      const updatedCard = { ...card, stage: newStage, currentIncorrectCount: newIncorrectCount };
+      // Wrong answer: add card to end of queue (keep original stage/due date)
+      // The stage calculation is for the review record, not for immediate update
+      const updatedCard = { ...card, currentIncorrectCount: newIncorrectCount };
       newQueue.push(updatedCard);
     }
 
