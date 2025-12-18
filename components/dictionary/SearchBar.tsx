@@ -1,13 +1,11 @@
 import React, { forwardRef, useImperativeHandle, useRef } from 'react';
-import { Host, TextField } from '@expo/ui/swift-ui';
-import { View, StyleSheet } from 'react-native';
+import { TextInput, StyleSheet, PlatformColor } from 'react-native';
 
 type SearchBarProps = {
   value: string;
   onChangeText: (text: string) => void;
   onClear: () => void;
   placeholder?: string;
-  autoFocus?: boolean;
 };
 
 export type SearchBarRef = {
@@ -23,36 +21,40 @@ export const SearchBar = forwardRef<SearchBarRef, SearchBarProps>(
     },
     ref
   ) {
-    const fieldRef = useRef<any>(null);
+    const inputRef = useRef<TextInput>(null);
 
     useImperativeHandle(ref, () => ({
       focus: () => {
-        // SwiftUI TextField focus handling
-        fieldRef.current?.focus?.();
+        inputRef.current?.focus();
       },
     }));
 
     return (
-      <View style={styles.container}>
-        <Host style={styles.hostContainer}>
-          <TextField
-            ref={fieldRef}
-            placeholder={placeholder}
-            defaultValue={value}
-            onChangeText={onChangeText}
-            autocorrection={false}
-          />
-        </Host>
-      </View>
+      <TextInput
+        ref={inputRef}
+        style={styles.input}
+        placeholder={placeholder}
+        placeholderTextColor={PlatformColor('placeholderText')}
+        value={value}
+        onChangeText={onChangeText}
+        autoCorrect={false}
+        autoCapitalize="none"
+        returnKeyType="search"
+        clearButtonMode="while-editing"
+        enablesReturnKeyAutomatically
+      />
     );
   }
 );
 
 const styles = StyleSheet.create({
-  container: {
-    width: '100%',
-  },
-  hostContainer: {
-    minHeight: 44,
+  input: {
+    height: 44,
+    paddingHorizontal: 16,
+    paddingVertical: 10,
+    fontSize: 17,
+    backgroundColor: PlatformColor('secondarySystemBackground'),
+    borderRadius: 10,
+    color: PlatformColor('label'),
   },
 });

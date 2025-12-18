@@ -1,5 +1,7 @@
 import React, { useCallback, useEffect, useRef } from 'react';
 import { FlatList, ActivityIndicator, View, Text, StyleSheet, PlatformColor } from 'react-native';
+import { useFocusEffect } from 'expo-router';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SearchBar, type SearchBarRef } from '@/components/dictionary/SearchBar';
 import { DictionaryEntry } from '@/components/dictionary/DictionaryEntry';
 import { useDatabase } from '@/contexts/DatabaseContext';
@@ -12,6 +14,7 @@ const SEARCH_DEBOUNCE_MS = 150;
 const PAGE_SIZE = 20;
 
 export default function DictionaryScreen() {
+  const insets = useSafeAreaInsets();
   const { db, isLoading: dbLoading, error: dbError } = useDatabase();
   const {
     searchQuery,
@@ -19,7 +22,6 @@ export default function DictionaryScreen() {
     isLoading,
     hasMore,
     inDeckIds,
-    shouldFocusSearch,
     setSearchQuery,
     setResults,
     appendResults,
@@ -29,7 +31,6 @@ export default function DictionaryScreen() {
     addToDeckIds,
     removeFromDeckIds,
     clearResults,
-    clearFocusSearch,
   } = useDictionaryStore();
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
@@ -37,13 +38,19 @@ export default function DictionaryScreen() {
   const isLoadingRef = useRef(false);
   const searchBarRef = useRef<SearchBarRef>(null);
 
-  // Handle focus trigger from tab press
-  useEffect(() => {
-    if (shouldFocusSearch) {
-      searchBarRef.current?.focus();
-      clearFocusSearch();
-    }
-  }, [shouldFocusSearch, clearFocusSearch]);
+  // Focus search bar when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      // Focus the search bar when the tab is focused
+      const timeout = setTimeout(() => {
+        searchBarRef.current?.focus();
+      }, 100);
+
+      return () => {
+        clearTimeout(timeout);
+      };
+    }, [])
+  );
 
   // Perform search
   const performSearch = useCallback(
@@ -235,13 +242,12 @@ export default function DictionaryScreen() {
   return (
     <View style={styles.container}>
       {/* Search Bar */}
-      <View style={styles.searchContainer}>
+      <View style={[styles.searchContainer, { paddingTop: insets.top + 16 }]}>
         <SearchBar
           ref={searchBarRef}
           value={searchQuery}
           onChangeText={handleChangeText}
           onClear={handleClear}
-          autoFocus
         />
       </View>
 
@@ -283,8 +289,8 @@ const styles = StyleSheet.create({
   },
   searchContainer: {
     paddingHorizontal: 16,
-    paddingTop: 16,
     paddingBottom: 8,
+    backgroundColor: PlatformColor('systemBackground'),
   },
   listContent: {
     paddingHorizontal: 16,
