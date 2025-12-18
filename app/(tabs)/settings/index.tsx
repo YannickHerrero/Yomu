@@ -69,8 +69,11 @@ export default function SettingsScreen() {
 
   // Handle theme change
   const handleThemeChange = useCallback(
-    (option: ThemeOption) => {
-      setMode(option.value);
+    (event: { nativeEvent: { index: number; label: string } }) => {
+      const selectedOption = THEME_OPTIONS[event.nativeEvent.index];
+      if (selectedOption) {
+        setMode(selectedOption.value);
+      }
     },
     [setMode]
   );
@@ -131,16 +134,14 @@ export default function SettingsScreen() {
         <Text style={styles.sectionTitle}>Appearance</Text>
         <GlassView style={styles.card} glassEffectStyle="regular">
           <View style={styles.settingRow}>
-            <View style={styles.settingInfo}>
-              <Text style={styles.settingLabel}>Theme</Text>
-              <Text style={styles.settingDescription}>
-                Choose your preferred color scheme
-              </Text>
-            </View>
-            <View style={styles.pickerContainer}>
+            <Text style={styles.settingLabel}>Theme</Text>
+            <Text style={styles.settingDescription}>
+              Choose your preferred color scheme
+            </Text>
+            <View style={styles.pickerWrapper}>
               <Host style={styles.pickerHost}>
-                <Picker<ThemeOption>
-                  options={THEME_OPTIONS}
+                <Picker
+                  options={THEME_OPTIONS.map(opt => opt.label)}
                   selectedIndex={selectedThemeIndex >= 0 ? selectedThemeIndex : 0}
                   onOptionSelected={handleThemeChange}
                   variant="segmented"
@@ -208,8 +209,7 @@ export default function SettingsScreen() {
               <Host matchContents>
                 <Button
                   onPress={handleResetProgress}
-                  variant="borderedProminent"
-                  tintColor={PlatformColor('systemRed')}
+                  role="destructive"
                   disabled={isResetting}
                 >
                   {isResetting ? 'Resetting...' : 'Reset'}
@@ -331,8 +331,13 @@ const styles = StyleSheet.create({
   pickerContainer: {
     alignSelf: 'stretch',
   },
+  pickerWrapper: {
+    width: '100%',
+    marginTop: 4,
+  },
   pickerHost: {
     minHeight: 32,
+    width: '100%',
   },
   statsGrid: {
     flexDirection: 'row',
