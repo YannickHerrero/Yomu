@@ -75,7 +75,7 @@ export async function getDueCards(db: SQLiteDatabase): Promise<DeckCard[]> {
   const rows = await db.getAllAsync<DeckCardRow>(
     `SELECT dc.*, d.kanji, d.reading, d.definitions
      FROM deck_cards dc
-     JOIN dictionary d ON dc.dictionary_id = d.id
+     JOIN dict.dictionary d ON dc.dictionary_id = d.id
      WHERE dc.stage < ? AND dc.due_date <= ?
      ORDER BY dc.due_date ASC`,
     [SRS_STAGES.BURNED, now]
@@ -91,7 +91,7 @@ export async function getAllCards(db: SQLiteDatabase): Promise<DeckCard[]> {
   const rows = await db.getAllAsync<DeckCardRow>(
     `SELECT dc.*, d.kanji, d.reading, d.definitions
      FROM deck_cards dc
-     JOIN dictionary d ON dc.dictionary_id = d.id
+     JOIN dict.dictionary d ON dc.dictionary_id = d.id
      WHERE dc.stage < ?
      ORDER BY dc.added_at DESC`,
     [SRS_STAGES.BURNED]
@@ -107,7 +107,7 @@ export async function getBurnedCards(db: SQLiteDatabase): Promise<DeckCard[]> {
   const rows = await db.getAllAsync<DeckCardRow>(
     `SELECT dc.*, d.kanji, d.reading, d.definitions
      FROM deck_cards dc
-     JOIN dictionary d ON dc.dictionary_id = d.id
+     JOIN dict.dictionary d ON dc.dictionary_id = d.id
      WHERE dc.stage = ?
      ORDER BY dc.added_at DESC`,
     [SRS_STAGES.BURNED]
@@ -150,6 +150,77 @@ export async function unburnCard(
      WHERE id = ?`,
     [SRS_STAGES.APPRENTICE_1, dueDate, cardId]
   );
+}
+
+/**
+ * Add mock cards for testing/development
+ * Clears existing deck and adds cards across all SRS stages
+ */
+export async function addMockCards(db: SQLiteDatabase): Promise<number> {
+  try {
+    // First, clear the existing deck
+    await db.execAsync(`
+      DELETE FROM review_history;
+      DELETE FROM deck_cards;
+    `);
+
+    // Get common words from dictionary
+    const words = await db.getAllAsync<{ id: number }>(
+      `SELECT id FROM dict.dictionary 
+       WHERE common = 1 
+       ORDER BY frequency_score DESC 
+       LIMIT 20`
+    );
+
+    if (words.length < 18) {
+      throw new Error('Not enough dictionary entries found');
+    }
+
+    const now = new Date();
+    const oneHourAgo = new Date(now.getTime() - 60 * 60 * 1000).toISOString();
+    const addedAt = now.toISOString();
+
+    // Helper to calculate due date
+    const getMockDueDate = (stage: number, isDueNow: boolean): string | null => {
+      if (stage === SRS_STAGES.BURNED) return null;
+      if (isDueNow) return oneHourAgo;
+      return calculateDueDate(stage);
+    };
+
+    // Insert cards with different stages and due dates
+    let cardIndex = 0;
+    const stages = [
+      { stage: SRS_STAGES.APPRENTICE_1, count: 2 },
+      { stage: SRS_STAGES.APPRENTICE_2, count: 2 },
+      { stage: SRS_STAGES.APPRENTICE_3, count: 2 },
+      { stage: SRS_STAGES.APPRENTICE_4, count: 2 },
+      { stage: SRS_STAGES.GURU_1, count: 2 },
+      { stage: SRS_STAGES.GURU_2, count: 2 },
+      { stage: SRS_STAGES.MASTER, count: 2 },
+      { stage: SRS_STAGES.ENLIGHTENED, count: 2 },
+      { stage: SRS_STAGES.BURNED, count: 2 },
+    ];
+
+    for (const { stage, count } of stages) {
+      for (let i = 0; i < count; i++) {
+        const isDueNow = i === 0; // First card of each stage is due now
+        const dueDate = getMockDueDate(stage, isDueNow);
+
+        await db.runAsync(
+          `INSERT INTO deck_cards (dictionary_id, added_at, due_date, stage, current_incorrect_count)
+           VALUES (?, ?, ?, ?, ?)`,
+          [words[cardIndex].id, addedAt, dueDate, stage, 0]
+        );
+
+        cardIndex++;
+      }
+    }
+
+    return cardIndex;
+  } catch (error) {
+    console.error('Failed to add mock cards:', error);
+    throw error;
+  }
 }
 
 /**

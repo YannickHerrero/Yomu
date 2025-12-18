@@ -11,7 +11,7 @@ import {
 import { GlassView } from 'expo-glass-effect';
 import { Host, Picker, Button } from '@expo/ui/swift-ui';
 import { useDatabase } from '@/contexts/DatabaseContext';
-import { getDeckStats } from '@/database/deck';
+import { getDeckStats, addMockCards } from '@/database/deck';
 import { getTotalReviews, getStudyDays } from '@/database/stats';
 import { useThemeStore } from '@/stores/useThemeStore';
 import Constants from 'expo-constants';
@@ -37,6 +37,7 @@ export default function SettingsScreen() {
   const { mode, setMode } = useThemeStore();
   const [dataStats, setDataStats] = useState<DataStats | null>(null);
   const [isResetting, setIsResetting] = useState(false);
+  const [isAddingMock, setIsAddingMock] = useState(false);
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -120,6 +121,40 @@ export default function SettingsScreen() {
   const handleOpenGitHub = useCallback(() => {
     Linking.openURL('https://github.com/YannickHerrero/Yomu');
   }, []);
+
+  // Handle add mock data
+  const handleAddMockData = useCallback(() => {
+    Alert.alert(
+      'Add Mock Data',
+      'This will clear your current deck and add 18 test cards across all SRS stages. Some cards will be due now for immediate review.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Add Cards',
+          style: 'destructive',
+          onPress: async () => {
+            if (!db) return;
+
+            setIsAddingMock(true);
+            try {
+              const count = await addMockCards(db);
+              await loadStats();
+              Alert.alert(
+                'Success',
+                `Added ${count} test cards to your deck across all SRS stages.`,
+                [{ text: 'OK' }]
+              );
+            } catch (err) {
+              console.error('Failed to add mock data:', err);
+              Alert.alert('Error', 'Failed to add mock data. Please try again.');
+            } finally {
+              setIsAddingMock(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [db, loadStats]);
 
   const selectedThemeIndex = THEME_OPTIONS.findIndex((opt) => opt.value === mode);
 
@@ -273,6 +308,32 @@ export default function SettingsScreen() {
             Native. Dictionary data provided by JMdict/EDICT project.
           </Text>
           <Text style={styles.creditsAuthor}>Made with ❤️ by Yannick</Text>
+        </GlassView>
+      </View>
+
+      {/* Development Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Development</Text>
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          <View style={styles.linkRow}>
+            <View style={styles.linkInfo}>
+              <Text style={styles.linkTitle}>Add Mock Data</Text>
+              <Text style={styles.linkDescription}>
+                Add test cards for development & testing
+              </Text>
+            </View>
+            <View style={styles.buttonContainer}>
+              <Host matchContents>
+                <Button
+                  onPress={handleAddMockData}
+                  variant="bordered"
+                  disabled={isAddingMock}
+                >
+                  {isAddingMock ? 'Adding...' : 'Add Cards'}
+                </Button>
+              </Host>
+            </View>
+          </View>
         </GlassView>
       </View>
 
