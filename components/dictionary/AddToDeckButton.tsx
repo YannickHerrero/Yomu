@@ -1,21 +1,18 @@
 import React, { useState } from 'react';
 import { Alert } from 'react-native';
-import { Button, ButtonText, ButtonSpinner } from '@/components/ui/button';
-import { Check, Plus, Trash2 } from 'lucide-react-native';
-import { Icon } from '@/components/ui/icon';
+import { Host, Button } from '@expo/ui/swift-ui';
+import { View, StyleSheet } from 'react-native';
 
 type AddToDeckButtonProps = {
   isInDeck: boolean;
   onAdd: () => Promise<void>;
   onRemove?: () => Promise<void>;
-  size?: 'xs' | 'sm' | 'md' | 'lg' | 'xl';
 };
 
 export function AddToDeckButton({
   isInDeck,
   onAdd,
   onRemove,
-  size = 'sm',
 }: AddToDeckButtonProps) {
   const [isLoading, setIsLoading] = useState(false);
 
@@ -57,41 +54,22 @@ export function AddToDeckButton({
     );
   };
 
-  if (isInDeck) {
-    return (
-      <Button
-        size={size}
-        variant="outline"
-        action="negative"
-        onPress={handleRemove}
-        isDisabled={isLoading}
-      >
-        {isLoading ? (
-          <ButtonSpinner className="mr-1" />
-        ) : (
-          <Icon as={Trash2} className="text-error-500 mr-1" size="sm" />
-        )}
-        <ButtonText className="text-error-500">
-          {isLoading ? 'Removing...' : 'Remove'}
-        </ButtonText>
-      </Button>
-    );
-  }
-
   return (
-    <Button
-      size={size}
-      variant="solid"
-      action="primary"
-      onPress={handleAdd}
-      isDisabled={isLoading}
-    >
-      {isLoading ? (
-        <ButtonSpinner className="mr-1" />
-      ) : (
-        <Icon as={Plus} className="text-typography-0 mr-1" size="sm" />
-      )}
-      <ButtonText>{isLoading ? 'Adding...' : 'Add'}</ButtonText>
-    </Button>
+    <View style={styles.container}>
+      <Host matchContents>
+        <Button
+          onPress={isInDeck ? handleRemove : handleAdd}
+          variant={isInDeck ? 'bordered' : 'default'}
+        >
+          {isLoading ? 'Loading...' : isInDeck ? 'Remove' : 'Add'}
+        </Button>
+      </Host>
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    minWidth: 80,
+  },
+});
