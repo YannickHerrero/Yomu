@@ -27,7 +27,7 @@ export default function TabLayout() {
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger
-        name="settings"
+        name="settings/index"
         options={{
           title: 'Settings',
         }}
