@@ -13,6 +13,7 @@ import { Host, Picker, Button } from '@expo/ui/swift-ui';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { getDeckStats, addMockCards } from '@/database/deck';
 import { getTotalReviews, getStudyDays } from '@/database/stats';
+import { addMockReviewHistory } from '@/database/reviewHistory';
 import { useThemeStore } from '@/stores/useThemeStore';
 import Constants from 'expo-constants';
 
@@ -126,22 +127,27 @@ export default function SettingsScreen() {
   const handleAddMockData = useCallback(() => {
     Alert.alert(
       'Add Mock Data',
-      'This will clear your current deck and add 18 test cards across all SRS stages. Some cards will be due now for immediate review.',
+      'This will clear your current deck and add 18 test cards with 90 days of review history (streaks, heatmap data, etc.).',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Add Cards',
+          text: 'Add Data',
           style: 'destructive',
           onPress: async () => {
             if (!db) return;
 
             setIsAddingMock(true);
             try {
-              const count = await addMockCards(db);
+              // First add mock cards
+              const cardCount = await addMockCards(db);
+              
+              // Then generate review history
+              const reviewCount = await addMockReviewHistory(db);
+              
               await loadStats();
               Alert.alert(
                 'Success',
-                `Added ${count} test cards to your deck across all SRS stages.`,
+                `Added ${cardCount} test cards and ${reviewCount} review records across 90 days.`,
                 [{ text: 'OK' }]
               );
             } catch (err) {
@@ -319,7 +325,7 @@ export default function SettingsScreen() {
             <View style={styles.linkInfo}>
               <Text style={styles.linkTitle}>Add Mock Data</Text>
               <Text style={styles.linkDescription}>
-                Add test cards for development & testing
+                Add test cards + 90 days of review history
               </Text>
             </View>
             <View style={styles.buttonContainer}>

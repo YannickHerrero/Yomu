@@ -133,8 +133,12 @@ import { GlassView, GlassContainer } from 'expo-glass-effect';
 ### Styling Approach
 - **Layout**: Use NativeWind (Tailwind CSS) or `StyleSheet.create()` for layout containers
 - **Colors**: Use iOS system colors via `PlatformColor()` for automatic dark/light mode
+  - **IMPORTANT**: Only use black and white colors (label-based colors). Do not use colored system colors like `systemBlue`, `systemRed`, etc.
+  - Allowed colors: `label`, `secondaryLabel`, `tertiaryLabel`, `quaternaryLabel`, `systemBackground`, `secondarySystemBackground`, `tertiarySystemBackground`, `quaternarySystemFill`, `separator`
+  - All UI elements should be black/white/gray only
 - **Interactive elements**: Use SwiftUI components (they handle their own styling)
 - **Glass surfaces**: Use `expo-glass-effect` components
+- **Icons**: Use SF Symbols for icons. Never use emoji in UI components.
 
 ```typescript
 import { PlatformColor, StyleSheet } from 'react-native';

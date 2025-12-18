@@ -89,6 +89,89 @@ export async function getRecentReviews(
   return rows.map(mapRowToRecord);
 }
 
+/**
+ * Generate mock review history for testing
+ * Creates realistic review patterns over the past 90 days
+ */
+export async function addMockReviewHistory(db: SQLiteDatabase): Promise<number> {
+  try {
+    // Get all cards from deck
+    const cards = await db.getAllAsync<{ id: number; stage: number }>(
+      `SELECT id, stage FROM deck_cards ORDER BY id`
+    );
+
+    if (cards.length === 0) {
+      throw new Error('No cards in deck. Add mock cards first.');
+    }
+
+    let totalReviews = 0;
+    const now = new Date();
+
+    // Generate reviews for the past 90 days
+    for (let daysAgo = 90; daysAgo >= 0; daysAgo--) {
+      const reviewDate = new Date(now);
+      reviewDate.setDate(reviewDate.getDate() - daysAgo);
+      
+      // Skip some days randomly (to create gaps in streak)
+      if (Math.random() > 0.7) continue;
+
+      // Number of reviews for this day (1-15)
+      const reviewsThisDay = Math.floor(Math.random() * 15) + 1;
+
+      for (let i = 0; i < reviewsThisDay; i++) {
+        // Pick a random card
+        const card = cards[Math.floor(Math.random() * cards.length)];
+        
+        // Random stage before (1-8, not burned)
+        const stageBefore = Math.min(Math.floor(Math.random() * 8) + 1, card.stage);
+        
+        // 80% success rate
+        const isCorrect = Math.random() > 0.2;
+        
+        // Calculate stage after based on success
+        const stageAfter = isCorrect 
+          ? Math.min(stageBefore + 1, 9) 
+          : Math.max(stageBefore - 1, 1);
+        
+        const incorrectCount = isCorrect ? 0 : 1;
+
+        // Add some time variation to the review (spread throughout the day)
+        const reviewHour = Math.floor(Math.random() * 24);
+        const reviewMinute = Math.floor(Math.random() * 60);
+        reviewDate.setHours(reviewHour, reviewMinute, 0, 0);
+
+        const reviewedAt = reviewDate.toISOString();
+        const dateOnly = reviewedAt.split('T')[0];
+
+        // Insert review record
+        await db.runAsync(
+          `INSERT INTO review_history (card_id, reviewed_at, stage_before, stage_after, is_correct, incorrect_count)
+           VALUES (?, ?, ?, ?, ?, ?)`,
+          [card.id, reviewedAt, stageBefore, stageAfter, isCorrect ? 1 : 0, incorrectCount]
+        );
+
+        // Update daily stats cache
+        await db.runAsync(
+          `INSERT INTO daily_stats (date, reviews_count, correct_count, incorrect_count)
+           VALUES (?, 1, ?, ?)
+           ON CONFLICT(date) DO UPDATE SET
+             reviews_count = reviews_count + 1,
+             correct_count = correct_count + ?,
+             incorrect_count = incorrect_count + ?`,
+          [dateOnly, isCorrect ? 1 : 0, isCorrect ? 0 : 1, isCorrect ? 1 : 0, isCorrect ? 0 : 1]
+        );
+
+        totalReviews++;
+      }
+    }
+
+    return totalReviews;
+  } catch (error) {
+    console.error('Failed to add mock review history:', error);
+    throw error;
+  }
+}
+
 function mapRowToRecord(row: ReviewRow): ReviewRecord {
   return {
     id: row.id,
