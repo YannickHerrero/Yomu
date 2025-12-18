@@ -106,7 +106,7 @@ const styles = StyleSheet.create({
     marginLeft: 8,
   },
   commonBadge: {
-    backgroundColor: PlatformColor('systemGreen'),
+    backgroundColor: PlatformColor('quaternarySystemFill'),
     paddingHorizontal: 8,
     paddingVertical: 2,
     borderRadius: 8,
@@ -115,7 +115,7 @@ const styles = StyleSheet.create({
   commonText: {
     fontSize: 11,
     fontWeight: '600',
-    color: PlatformColor('systemBackground'),
+    color: PlatformColor('label'),
   },
   posBadge: {
     backgroundColor: PlatformColor('secondarySystemFill'),

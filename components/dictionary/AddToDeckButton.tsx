@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { Alert, View, StyleSheet } from 'react-native';
-import { Host, Button } from '@expo/ui/swift-ui';
+import { Alert, Pressable, StyleSheet, PlatformColor } from 'react-native';
+import { GlassView } from 'expo-glass-effect';
+import { IconSymbol } from '@/components/ui/icon-symbol';
 
 type AddToDeckButtonProps = {
   isInDeck: boolean;
@@ -21,6 +22,8 @@ export function AddToDeckButton({
     setIsLoading(true);
     try {
       await onAdd();
+    } catch (error) {
+      console.error('Failed to add card:', error);
     } finally {
       setIsLoading(false);
     }
@@ -44,6 +47,8 @@ export function AddToDeckButton({
             setIsLoading(true);
             try {
               await onRemove();
+            } catch (error) {
+              console.error('Failed to remove card:', error);
             } finally {
               setIsLoading(false);
             }
@@ -53,22 +58,60 @@ export function AddToDeckButton({
     );
   };
 
+  if (isLoading) {
+    return (
+      <GlassView style={styles.button} isInteractive>
+        <IconSymbol
+          name="arrow.triangle.2.circlepath"
+          size={20}
+          color={PlatformColor('secondaryLabel')}
+          weight="regular"
+        />
+      </GlassView>
+    );
+  }
+
+  if (isInDeck) {
+    return (
+      <GlassView style={styles.button} isInteractive>
+        <Pressable onPress={handleRemove} style={styles.pressable}>
+          <IconSymbol
+            name="trash.fill"
+            size={20}
+            color={PlatformColor('label')}
+            weight="regular"
+          />
+        </Pressable>
+      </GlassView>
+    );
+  }
+
   return (
-    <View style={styles.container}>
-      <Host matchContents>
-        <Button
-          onPress={isInDeck ? handleRemove : handleAdd}
-          variant={isInDeck ? 'bordered' : 'default'}
-        >
-          {isLoading ? 'Loading...' : isInDeck ? 'Remove' : 'Add'}
-        </Button>
-      </Host>
-    </View>
+    <GlassView style={styles.button} isInteractive>
+      <Pressable onPress={handleAdd} style={styles.pressable}>
+        <IconSymbol
+          name="plus"
+          size={20}
+          color={PlatformColor('label')}
+          weight="semibold"
+        />
+      </Pressable>
+    </GlassView>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    minWidth: 80,
+  button: {
+    width: 44,
+    height: 44,
+    borderRadius: 22,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pressable: {
+    width: '100%',
+    height: '100%',
+    justifyContent: 'center',
+    alignItems: 'center',
   },
 });

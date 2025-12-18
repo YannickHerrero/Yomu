@@ -256,6 +256,7 @@ export default function DictionaryScreen() {
         data={results}
         renderItem={renderItem}
         keyExtractor={keyExtractor}
+        extraData={inDeckIds}
         contentContainerStyle={[
           styles.listContent,
           results.length === 0 && styles.listContentEmpty,
@@ -340,7 +341,7 @@ const styles = StyleSheet.create({
   },
   errorText: {
     fontSize: 16,
-    color: PlatformColor('systemRed'),
+    color: PlatformColor('label'),
     textAlign: 'center',
   },
   loadingOverlay: {
