@@ -1,10 +1,5 @@
 import React, { useCallback, useEffect, useRef } from 'react';
-import { FlatList, ActivityIndicator } from 'react-native';
-import { Box } from '@/components/ui/box';
-import { VStack } from '@/components/ui/vstack';
-import { Text } from '@/components/ui/text';
-import { Center } from '@/components/ui/center';
-import { Spinner } from '@/components/ui/spinner';
+import { FlatList, ActivityIndicator, View, Text, StyleSheet, PlatformColor } from 'react-native';
 import { SearchBar, type SearchBarRef } from '@/components/dictionary/SearchBar';
 import { DictionaryEntry } from '@/components/dictionary/DictionaryEntry';
 import { useDatabase } from '@/contexts/DatabaseContext';
@@ -186,9 +181,9 @@ export default function DictionaryScreen() {
   const renderFooter = useCallback(() => {
     if (!isLoading || results.length === 0) return null;
     return (
-      <Center className="py-4">
+      <View style={styles.footerLoader}>
         <ActivityIndicator size="small" />
-      </Center>
+      </View>
     );
   }, [isLoading, results.length]);
 
@@ -198,94 +193,154 @@ export default function DictionaryScreen() {
 
     if (!searchQuery.trim()) {
       return (
-        <Center className="flex-1 p-8">
-          <Text className="text-typography-400 text-center">
-            Type to search the dictionary
-          </Text>
-          <Text className="text-typography-400 text-center mt-2 text-sm">
+        <View style={styles.emptyState}>
+          <Text style={styles.emptyText}>Type to search the dictionary</Text>
+          <Text style={styles.emptySubtext}>
             You can search in Japanese, romaji, or English
           </Text>
-        </Center>
+        </View>
       );
     }
 
     return (
-      <Center className="flex-1 p-8">
-        <Text className="text-typography-400 text-center">
+      <View style={styles.emptyState}>
+        <Text style={styles.emptyText}>
           No results found for &quot;{searchQuery}&quot;
         </Text>
-      </Center>
+      </View>
     );
   }, [isLoading, searchQuery]);
 
   // Loading state for database initialization
   if (dbLoading) {
     return (
-      <Box className="flex-1 bg-background-0">
-        <Center className="flex-1">
-          <Spinner size="large" />
-          <Text className="text-typography-400 mt-4">Loading dictionary...</Text>
-        </Center>
-      </Box>
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+        <Text style={styles.loadingText}>Loading dictionary...</Text>
+      </View>
     );
   }
 
   // Error state
   if (dbError) {
     return (
-      <Box className="flex-1 bg-background-0">
-        <Center className="flex-1 p-8">
-          <Text className="text-error-500 text-center">
-            Failed to load dictionary: {dbError}
-          </Text>
-        </Center>
-      </Box>
+      <View style={styles.errorContainer}>
+        <Text style={styles.errorText}>
+          Failed to load dictionary: {dbError}
+        </Text>
+      </View>
     );
   }
 
   return (
-    <Box className="flex-1 bg-background-0">
-      <VStack className="flex-1">
-        {/* Search Bar */}
-        <Box className="px-4 pt-4 pb-2">
-          <SearchBar
-            ref={searchBarRef}
-            value={searchQuery}
-            onChangeText={handleChangeText}
-            onClear={handleClear}
-            autoFocus
-          />
-        </Box>
-
-        {/* Results List */}
-        <FlatList
-          data={results}
-          renderItem={renderItem}
-          keyExtractor={keyExtractor}
-          contentContainerStyle={{
-            paddingHorizontal: 16,
-            paddingBottom: 16,
-            flexGrow: results.length === 0 ? 1 : undefined,
-          }}
-          onEndReached={handleLoadMore}
-          onEndReachedThreshold={0.5}
-          ListFooterComponent={renderFooter}
-          ListEmptyComponent={renderEmpty}
-          keyboardShouldPersistTaps="handled"
-          keyboardDismissMode="on-drag"
-          showsVerticalScrollIndicator={false}
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={5}
+    <View style={styles.container}>
+      {/* Search Bar */}
+      <View style={styles.searchContainer}>
+        <SearchBar
+          ref={searchBarRef}
+          value={searchQuery}
+          onChangeText={handleChangeText}
+          onClear={handleClear}
+          autoFocus
         />
+      </View>
 
-        {/* Loading overlay for initial search */}
-        {isLoading && results.length === 0 && searchQuery.trim() && (
-          <Box className="absolute inset-0 bg-background-0/80 justify-center items-center">
-            <Spinner size="large" />
-          </Box>
-        )}
-      </VStack>
-    </Box>
+      {/* Results List */}
+      <FlatList
+        data={results}
+        renderItem={renderItem}
+        keyExtractor={keyExtractor}
+        contentContainerStyle={[
+          styles.listContent,
+          results.length === 0 && styles.listContentEmpty,
+        ]}
+        onEndReached={handleLoadMore}
+        onEndReachedThreshold={0.5}
+        ListFooterComponent={renderFooter}
+        ListEmptyComponent={renderEmpty}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        showsVerticalScrollIndicator={false}
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+      />
+
+      {/* Loading overlay for initial search */}
+      {isLoading && results.length === 0 && searchQuery.trim() && (
+        <View style={styles.loadingOverlay}>
+          <ActivityIndicator size="large" />
+        </View>
+      )}
+    </View>
   );
 }
+
+const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: PlatformColor('systemBackground'),
+  },
+  searchContainer: {
+    paddingHorizontal: 16,
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  listContent: {
+    paddingHorizontal: 16,
+    paddingBottom: 16,
+  },
+  listContentEmpty: {
+    flexGrow: 1,
+  },
+  footerLoader: {
+    paddingVertical: 16,
+    alignItems: 'center',
+  },
+  emptyState: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+  },
+  emptyText: {
+    fontSize: 16,
+    color: PlatformColor('secondaryLabel'),
+    textAlign: 'center',
+  },
+  emptySubtext: {
+    fontSize: 14,
+    color: PlatformColor('tertiaryLabel'),
+    textAlign: 'center',
+    marginTop: 8,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: PlatformColor('systemBackground'),
+  },
+  loadingText: {
+    fontSize: 16,
+    color: PlatformColor('secondaryLabel'),
+    marginTop: 16,
+  },
+  errorContainer: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: 32,
+    backgroundColor: PlatformColor('systemBackground'),
+  },
+  errorText: {
+    fontSize: 16,
+    color: PlatformColor('systemRed'),
+    textAlign: 'center',
+  },
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: 'rgba(0, 0, 0, 0.3)',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+});
