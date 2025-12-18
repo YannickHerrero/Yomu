@@ -17,7 +17,7 @@ export default function RootLayout() {
   const colorScheme = useColorScheme();
 
   return (
-    <GluestackUIProvider mode="dark">
+    <GluestackUIProvider mode={colorScheme ?? 'dark'}>
       <DatabaseProvider>
         <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
           <Stack>
