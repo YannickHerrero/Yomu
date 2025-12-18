@@ -26,7 +26,7 @@ export function ReviewButtons({ onWrong, onCorrect, disabled = false }: ReviewBu
     <GlassContainer spacing={16} style={styles.container}>
       {/* Wrong Button */}
       <GlassView
-        style={[styles.button, styles.wrongButton, disabled && styles.disabledButton]}
+        style={[styles.button, disabled && styles.disabledButton]}
         glassEffectStyle="regular"
         isInteractive
       >
@@ -36,15 +36,12 @@ export function ReviewButtons({ onWrong, onCorrect, disabled = false }: ReviewBu
           style={styles.buttonPressable}
         >
           <Text style={[styles.buttonIcon, disabled && styles.disabledText]}>✕</Text>
-          <Text style={[styles.buttonText, styles.wrongText, disabled && styles.disabledText]}>
-            Wrong
-          </Text>
         </Pressable>
       </GlassView>
 
       {/* Correct Button */}
       <GlassView
-        style={[styles.button, styles.correctButton, disabled && styles.disabledButton]}
+        style={[styles.button, disabled && styles.disabledButton]}
         glassEffectStyle="regular"
         isInteractive
       >
@@ -54,9 +51,6 @@ export function ReviewButtons({ onWrong, onCorrect, disabled = false }: ReviewBu
           style={styles.buttonPressable}
         >
           <Text style={[styles.buttonIcon, disabled && styles.disabledText]}>✓</Text>
-          <Text style={[styles.buttonText, styles.correctText, disabled && styles.disabledText]}>
-            Correct
-          </Text>
         </Pressable>
       </GlassView>
     </GlassContainer>
@@ -73,17 +67,9 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
   },
   buttonPressable: {
-    flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    padding: 20,
-    gap: 8,
-  },
-  wrongButton: {
-    // Subtle red tint applied via text
-  },
-  correctButton: {
-    // Subtle green tint applied via text
+    padding: 16,
   },
   disabledButton: {
     opacity: 0.5,
@@ -91,16 +77,7 @@ const styles = StyleSheet.create({
   buttonIcon: {
     fontSize: 24,
     fontWeight: '700',
-  },
-  buttonText: {
-    fontSize: 18,
-    fontWeight: '600',
-  },
-  wrongText: {
-    color: PlatformColor('systemRed'),
-  },
-  correctText: {
-    color: PlatformColor('systemGreen'),
+    color: PlatformColor('label'),
   },
   disabledText: {
     color: PlatformColor('tertiaryLabel'),
