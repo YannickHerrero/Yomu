@@ -1,7 +1,6 @@
 import React, { useState } from 'react';
-import { Alert } from 'react-native';
+import { Alert, View, StyleSheet } from 'react-native';
 import { Host, Button } from '@expo/ui/swift-ui';
-import { View, StyleSheet } from 'react-native';
 
 type AddToDeckButtonProps = {
   isInDeck: boolean;
