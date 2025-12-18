@@ -2,6 +2,7 @@ import React, { useCallback, useEffect } from 'react';
 import { View, ScrollView, StyleSheet, PlatformColor, Pressable, Text, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { GlassView } from 'expo-glass-effect';
+import { SymbolView } from 'expo-symbols';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { useDeckStore } from '@/stores/useDeckStore';
 import { DeckStats } from '@/components/review/DeckStats';
@@ -91,7 +92,12 @@ export default function ReviewScreen() {
       <View style={styles.navigationContainer}>
         <Pressable onPress={handleViewDeck} style={styles.navButtonWrapper}>
           <GlassView style={styles.navButton} glassEffectStyle="regular" isInteractive>
-            <Text style={styles.navButtonIcon}>📚</Text>
+            <SymbolView
+              name="rectangle.stack.fill"
+              size={32}
+              tintColor={PlatformColor('label')}
+              style={styles.navButtonIcon}
+            />
             <Text style={styles.navButtonText}>View Deck</Text>
             <Text style={styles.navButtonSubtext}>{stats.activeCards} cards</Text>
           </GlassView>
@@ -99,7 +105,12 @@ export default function ReviewScreen() {
 
         <Pressable onPress={handleViewBurned} style={styles.navButtonWrapper}>
           <GlassView style={styles.navButton} glassEffectStyle="regular" isInteractive>
-            <Text style={styles.navButtonIcon}>🔥</Text>
+            <SymbolView
+              name="flame.fill"
+              size={32}
+              tintColor={PlatformColor('label')}
+              style={styles.navButtonIcon}
+            />
             <Text style={styles.navButtonText}>Burned</Text>
             <Text style={styles.navButtonSubtext}>{stats.burnedCards} cards</Text>
           </GlassView>
@@ -151,7 +162,6 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   navButtonIcon: {
-    fontSize: 32,
     marginBottom: 8,
   },
   navButtonText: {

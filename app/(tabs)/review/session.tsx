@@ -143,6 +143,8 @@ export default function ReviewSessionScreen() {
           card={session.currentCard}
           isRevealed={session.isRevealed}
           onReveal={handleReveal}
+          onWrong={handleWrong}
+          onCorrect={handleCorrect}
         />
       </View>
 

@@ -8,9 +8,11 @@ type FlashcardProps = {
   card: DeckCard;
   isRevealed: boolean;
   onReveal: () => void;
+  onWrong?: () => void;
+  onCorrect?: () => void;
 };
 
-export function Flashcard({ card, isRevealed, onReveal }: FlashcardProps) {
+export function Flashcard({ card, isRevealed, onReveal, onWrong, onCorrect }: FlashcardProps) {
   const fadeAnim = useRef(new Animated.Value(0)).current;
 
   // Animate the answer reveal
@@ -34,52 +36,73 @@ export function Flashcard({ card, isRevealed, onReveal }: FlashcardProps) {
   // Format definitions
   const definitions = card.definitions.slice(0, 3); // Show max 3 definitions
 
-  return (
-    <Pressable onPress={onReveal} disabled={isRevealed}>
-      <GlassView style={styles.card} glassEffectStyle="regular">
-        {/* Stage indicator */}
-        <View style={styles.stageContainer}>
-          <StageIndicator stage={card.stage} size="small" />
-        </View>
+  // Content to display (same for both states)
+  const cardContent = (
+    <>
+      {/* Stage indicator */}
+      <View style={styles.stageContainer}>
+        <StageIndicator stage={card.stage} size="small" />
+      </View>
 
-        {/* Main word */}
-        <View style={styles.wordContainer}>
-          <Text style={styles.word}>{displayWord}</Text>
+      {/* Main word */}
+      <View style={styles.wordContainer}>
+        <Text style={styles.word}>{displayWord}</Text>
 
-          {/* Tap to reveal hint */}
-          {!isRevealed && (
-            <Text style={styles.tapHint}>Tap to reveal</Text>
-          )}
-        </View>
+        {/* Tap to reveal hint */}
+        {!isRevealed && <Text style={styles.tapHint}>Tap to reveal</Text>}
+      </View>
 
-        {/* Answer section (revealed) */}
-        {isRevealed && (
-          <Animated.View style={[styles.answerContainer, { opacity: fadeAnim }]}>
-            {/* Reading (if showing kanji) */}
-            {showReadingSeparately && (
-              <Text style={styles.reading}>{card.reading}</Text>
+      {/* Answer section (revealed) */}
+      {isRevealed && (
+        <Animated.View style={[styles.answerContainer, { opacity: fadeAnim }]}>
+          {/* Reading (if showing kanji) */}
+          {showReadingSeparately && <Text style={styles.reading}>{card.reading}</Text>}
+
+          {/* Divider */}
+          <View style={styles.divider} />
+
+          {/* Definitions */}
+          <View style={styles.definitionsContainer}>
+            {definitions.map((def, index) => (
+              <Text key={index} style={styles.definition}>
+                {index + 1}. {def}
+              </Text>
+            ))}
+            {card.definitions.length > 3 && (
+              <Text style={styles.moreDefinitions}>
+                +{card.definitions.length - 3} more
+              </Text>
             )}
+          </View>
+        </Animated.View>
+      )}
+    </>
+  );
 
-            {/* Divider */}
-            <View style={styles.divider} />
+  // If not revealed, single pressable to reveal
+  if (!isRevealed) {
+    return (
+      <Pressable onPress={onReveal}>
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          {cardContent}
+        </GlassView>
+      </Pressable>
+    );
+  }
 
-            {/* Definitions */}
-            <View style={styles.definitionsContainer}>
-              {definitions.map((def, index) => (
-                <Text key={index} style={styles.definition}>
-                  {index + 1}. {def}
-                </Text>
-              ))}
-              {card.definitions.length > 3 && (
-                <Text style={styles.moreDefinitions}>
-                  +{card.definitions.length - 3} more
-                </Text>
-              )}
-            </View>
-          </Animated.View>
-        )}
-      </GlassView>
-    </Pressable>
+  // When revealed, split into left (wrong) and right (correct) halves
+  return (
+    <View style={styles.splitContainer}>
+      <Pressable onPress={onWrong} style={styles.leftHalf}>
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          {cardContent}
+        </GlassView>
+      </Pressable>
+
+      <Pressable onPress={onCorrect} style={styles.rightHalf}>
+        <View style={styles.transparentOverlay} />
+      </Pressable>
+    </View>
   );
 }
 
@@ -138,5 +161,22 @@ const styles = StyleSheet.create({
     color: PlatformColor('tertiaryLabel'),
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  splitContainer: {
+    position: 'relative',
+  },
+  leftHalf: {
+    width: '100%',
+  },
+  rightHalf: {
+    position: 'absolute',
+    top: 0,
+    right: 0,
+    width: '50%',
+    height: '100%',
+  },
+  transparentOverlay: {
+    width: '100%',
+    height: '100%',
   },
 });

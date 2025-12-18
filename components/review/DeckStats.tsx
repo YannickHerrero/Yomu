@@ -61,25 +61,25 @@ export function DeckStats({ stats, onPress }: DeckStatsProps) {
           label="Apprentice"
           count={stats.apprentice}
           total={totalActive}
-          color={PlatformColor('systemPink')}
+          color={PlatformColor('label')}
         />
         <DistributionBar
           label="Guru"
           count={stats.guru}
           total={totalActive}
-          color={PlatformColor('systemPurple')}
+          color={PlatformColor('label')}
         />
         <DistributionBar
           label="Master"
           count={stats.master}
           total={totalActive}
-          color={PlatformColor('systemBlue')}
+          color={PlatformColor('label')}
         />
         <DistributionBar
           label="Enlightened"
           count={stats.enlightened}
           total={totalActive}
-          color={PlatformColor('systemCyan')}
+          color={PlatformColor('label')}
         />
 
         <View style={styles.totalsRow}>

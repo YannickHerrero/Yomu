@@ -8,29 +8,9 @@ type StageIndicatorProps = {
   showFullName?: boolean;
 };
 
-// Get platform color based on group
-function getStageColor(stage: number): ReturnType<typeof PlatformColor> {
-  const group = getGroupFromStage(stage);
-  switch (group) {
-    case 'apprentice':
-      return PlatformColor('systemPink');
-    case 'guru':
-      return PlatformColor('systemPurple');
-    case 'master':
-      return PlatformColor('systemBlue');
-    case 'enlightened':
-      return PlatformColor('systemCyan');
-    case 'burned':
-      return PlatformColor('systemGray');
-    default:
-      return PlatformColor('systemGray');
-  }
-}
-
 export function StageIndicator({ stage, size = 'medium', showFullName = true }: StageIndicatorProps) {
   const group = getGroupFromStage(stage);
   const stageName = SRS_GROUP_NAMES[stage];
-  const color = getStageColor(stage);
 
   // Display text based on showFullName
   const displayText = showFullName ? stageName : group.charAt(0).toUpperCase() + group.slice(1);
@@ -64,7 +44,6 @@ export function StageIndicator({ stage, size = 'medium', showFullName = true }: 
       style={[
         styles.container,
         {
-          backgroundColor: color,
           paddingHorizontal: currentSize.paddingHorizontal,
           paddingVertical: currentSize.paddingVertical,
           borderRadius: currentSize.borderRadius,
@@ -88,9 +67,10 @@ export function StageIndicator({ stage, size = 'medium', showFullName = true }: 
 const styles = StyleSheet.create({
   container: {
     alignSelf: 'flex-start',
+    backgroundColor: PlatformColor('secondarySystemFill'),
   },
   text: {
-    color: 'white',
+    color: PlatformColor('secondaryLabel'),
     fontWeight: '600',
   },
 });
