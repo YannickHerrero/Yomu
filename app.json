@@ -9,7 +9,14 @@
     "userInterfaceStyle": "automatic",
     "newArchEnabled": true,
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.yherrero.yomu",
+      "infoPlist": {
+        "NSSupportsLiveActivities": true,
+        "NSSupportsLiveActivitiesFrequentUpdates": false,
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "entitlements": {}
     },
     "android": {
       "adaptiveIcon": {
@@ -38,11 +45,19 @@
             "backgroundColor": "#000000"
           }
         }
-      ]
+      ],
+      "expo-sqlite",
+      "expo-live-activity"
     ],
     "experiments": {
       "typedRoutes": true,
       "reactCompiler": true
+    },
+    "extra": {
+      "router": {},
+      "eas": {
+        "projectId": "6bf31f62-0bd8-4170-b86a-4f8c9270d4c5"
+      }
     }
   }
 }
