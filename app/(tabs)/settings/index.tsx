@@ -237,28 +237,6 @@ export default function SettingsScreen() {
           </View>
         </GlassView>
 
-        {/* Reset Button */}
-        <GlassView style={styles.dangerCard} glassEffectStyle="regular">
-          <View style={styles.dangerSection}>
-            <View style={styles.dangerInfo}>
-              <Text style={styles.dangerTitle}>Reset Learning Progress</Text>
-              <Text style={styles.dangerDescription}>
-                Remove all cards, reviews, and sessions
-              </Text>
-            </View>
-            <View style={styles.buttonContainer}>
-              <Host matchContents>
-                <Button
-                  onPress={handleResetProgress}
-                  role="destructive"
-                  disabled={isResetting}
-                >
-                  {isResetting ? 'Resetting...' : 'Reset'}
-                </Button>
-              </Host>
-            </View>
-          </View>
-        </GlassView>
       </View>
 
       {/* About Section */}
@@ -336,6 +314,32 @@ export default function SettingsScreen() {
                   disabled={isAddingMock}
                 >
                   {isAddingMock ? 'Adding...' : 'Add Cards'}
+                </Button>
+              </Host>
+            </View>
+          </View>
+        </GlassView>
+      </View>
+
+      {/* Danger Zone Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Danger Zone</Text>
+        <GlassView style={styles.dangerCard} glassEffectStyle="regular">
+          <View style={styles.dangerSection}>
+            <View style={styles.dangerInfo}>
+              <Text style={styles.dangerTitle}>Reset Learning Progress</Text>
+              <Text style={styles.dangerDescription}>
+                Remove all cards, reviews, and sessions
+              </Text>
+            </View>
+            <View style={styles.buttonContainer}>
+              <Host matchContents>
+                <Button
+                  onPress={handleResetProgress}
+                  role="destructive"
+                  disabled={isResetting}
+                >
+                  {isResetting ? 'Resetting...' : 'Reset'}
                 </Button>
               </Host>
             </View>
