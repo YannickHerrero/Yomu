@@ -13,6 +13,7 @@ import {
 } from '@/database/deck';
 import { recordReview } from '@/database/reviewHistory';
 import { calculateNewStage } from '@/utils/srs';
+import { useSessionStore } from './useSessionStore';
 
 export type { DeckCard } from '@/database/deck';
 
@@ -139,7 +140,20 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   // Add a card to deck
   addCard: async (db: SQLiteDatabase, dictionaryId: number) => {
     try {
-      await addCardToDeck(db, dictionaryId);
+      // Check if there's an active reading session
+      const sessionState = useSessionStore.getState();
+      const activeSessionId = sessionState.currentSessionId;
+
+      console.log('Adding card to deck, active session:', activeSessionId);
+
+      await addCardToDeck(db, dictionaryId, activeSessionId ?? undefined);
+
+      // If there's an active session, increment the cards added counter
+      if (activeSessionId) {
+        console.log('Incrementing cards added counter');
+        sessionState.incrementCardsAdded();
+      }
+
       // Refresh data
       const [cards, dueCards, stats] = await Promise.all([
         getAllCards(db),

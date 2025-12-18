@@ -5,6 +5,7 @@ type ReadingSession = {
   startedAt: string;
   endedAt: string | null;
   durationSeconds: number | null;
+  cardsAddedCount: number;
 };
 
 type SessionState = {
@@ -13,6 +14,7 @@ type SessionState = {
   startTime: number | null;
   elapsedTime: number;
   currentSessionId: number | null;
+  cardsAddedCount: number;
 
   // History
   sessions: ReadingSession[];
@@ -24,6 +26,8 @@ type SessionState = {
   stopTimer: () => void;
   setElapsedTime: (time: number) => void;
   setCurrentSessionId: (id: number | null) => void;
+  setCardsAddedCount: (count: number) => void;
+  incrementCardsAdded: () => void;
   setSessions: (sessions: ReadingSession[]) => void;
   setIsLoading: (loading: boolean) => void;
 };
@@ -33,6 +37,7 @@ export const useSessionStore = create<SessionState>((set) => ({
   startTime: null,
   elapsedTime: 0,
   currentSessionId: null,
+  cardsAddedCount: 0,
   sessions: [],
   isLoading: false,
 
@@ -50,10 +55,13 @@ export const useSessionStore = create<SessionState>((set) => ({
       startTime: null,
       elapsedTime: 0,
       currentSessionId: null,
+      cardsAddedCount: 0,
     }),
 
   setElapsedTime: (time) => set({ elapsedTime: time }),
   setCurrentSessionId: (id) => set({ currentSessionId: id }),
+  setCardsAddedCount: (count) => set({ cardsAddedCount: count }),
+  incrementCardsAdded: () => set((state) => ({ cardsAddedCount: state.cardsAddedCount + 1 })),
   setSessions: (sessions) => set({ sessions }),
   setIsLoading: (loading) => set({ isLoading: loading }),
 }));
