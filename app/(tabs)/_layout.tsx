@@ -11,9 +11,9 @@ export default function TabLayout() {
       <NativeTabs.Trigger name="index" hidden />
 
       {/* Left-grouped tabs */}
-      <NativeTabs.Trigger name="stats/index">
-        <Icon sf="chart.bar.fill" />
-        <Label>Stats</Label>
+      <NativeTabs.Trigger name="review">
+        <Icon sf="rectangle.stack.fill" />
+        <Label>Reviews</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger name="session">
@@ -21,9 +21,9 @@ export default function TabLayout() {
         <Label>Session</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger name="review">
-        <Icon sf="rectangle.stack.fill" />
-        <Label>Reviews</Label>
+      <NativeTabs.Trigger name="stats/index">
+        <Icon sf="chart.bar.fill" />
+        <Label>Stats</Label>
       </NativeTabs.Trigger>
 
       <NativeTabs.Trigger
