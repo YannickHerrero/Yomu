@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect } from 'react';
-import { View, ScrollView, StyleSheet, PlatformColor, Pressable, Text } from 'react-native';
+import { View, ScrollView, StyleSheet, PlatformColor, Pressable, Text, Alert } from 'react-native';
 import { router, useFocusEffect } from 'expo-router';
 import { GlassView } from 'expo-glass-effect';
 import { useDatabase } from '@/contexts/DatabaseContext';
@@ -8,7 +8,7 @@ import { DeckStats } from '@/components/review/DeckStats';
 
 export default function ReviewScreen() {
   const { db, isLoading: dbLoading } = useDatabase();
-  const { stats, isLoading, loadAllData, startSession } = useDeckStore();
+  const { stats, loadAllData, startSession } = useDeckStore();
 
   // Load data on mount
   useEffect(() => {
@@ -29,13 +29,36 @@ export default function ReviewScreen() {
   const handleStartReview = useCallback(async () => {
     if (!db) return;
 
+    // Show alert if no cards due
+    if (stats.dueNow === 0) {
+      Alert.alert(
+        'No Cards Due',
+        'You have no cards due for review right now. Check back later!',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
     try {
-      await startSession(db);
-      router.push('/review/session');
+      const sessionStarted = await startSession(db);
+      if (sessionStarted) {
+        router.push('/review/session');
+      } else {
+        Alert.alert(
+          'No Cards Available',
+          'Unable to start review session. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
     } catch (error) {
       console.error('Failed to start session:', error);
+      Alert.alert(
+        'Error',
+        'Failed to start review session. Please try again.',
+        [{ text: 'OK' }]
+      );
     }
-  }, [db, startSession]);
+  }, [db, startSession, stats.dueNow]);
 
   const handleViewDeck = useCallback(() => {
     router.push('/review/deck');
@@ -62,7 +85,7 @@ export default function ReviewScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Stats Display */}
-      <DeckStats stats={stats} onStartReview={handleStartReview} isLoading={isLoading} />
+      <DeckStats stats={stats} onPress={handleStartReview} />
 
       {/* Navigation Buttons */}
       <View style={styles.navigationContainer}>

@@ -1,13 +1,11 @@
 import React from 'react';
-import { View, Text, StyleSheet, PlatformColor } from 'react-native';
+import { View, Text, StyleSheet, PlatformColor, Pressable } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
-import { Host, Button } from '@expo/ui/swift-ui';
 import type { DeckStats as DeckStatsType } from '@/stores/useDeckStore';
 
 type DeckStatsProps = {
   stats: DeckStatsType;
-  onStartReview?: () => void;
-  isLoading?: boolean;
+  onPress?: () => void;
 };
 
 type DistributionBarProps = {
@@ -42,27 +40,18 @@ function DistributionBar({ label, count, total, color }: DistributionBarProps) {
   );
 }
 
-export function DeckStats({ stats, onStartReview, isLoading = false }: DeckStatsProps) {
-  const hasCardsdue = stats.dueNow > 0;
+export function DeckStats({ stats, onPress }: DeckStatsProps) {
   const totalActive = stats.activeCards;
 
   return (
     <View style={styles.container}>
       {/* Due Cards Card */}
-      <GlassView style={styles.dueCard} glassEffectStyle="regular">
-        <Text style={styles.dueCount}>{stats.dueNow}</Text>
-        <Text style={styles.dueLabel}>cards due</Text>
-
-        {onStartReview && (
-          <View style={styles.buttonContainer}>
-            <Host matchContents>
-              <Button onPress={onStartReview} disabled={!hasCardsdue || isLoading}>
-                {isLoading ? 'Loading...' : hasCardsdue ? 'Start Review' : 'No cards due'}
-              </Button>
-            </Host>
-          </View>
-        )}
-      </GlassView>
+      <Pressable onPress={onPress}>
+        <GlassView style={styles.dueCard} glassEffectStyle="regular" isInteractive>
+          <Text style={styles.dueCount}>{stats.dueNow}</Text>
+          <Text style={styles.dueLabel}>cards due</Text>
+        </GlassView>
+      </Pressable>
 
       {/* Distribution Card */}
       <GlassView style={styles.distributionCard} glassEffectStyle="regular">
@@ -131,10 +120,6 @@ const styles = StyleSheet.create({
     fontSize: 18,
     color: PlatformColor('secondaryLabel'),
     marginTop: -8,
-  },
-  buttonContainer: {
-    marginTop: 20,
-    minWidth: 160,
   },
   distributionCard: {
     padding: 20,

@@ -62,7 +62,7 @@ type DeckState = {
   unburnCard: (db: SQLiteDatabase, cardId: number) => Promise<void>;
 
   // Session actions
-  startSession: (db: SQLiteDatabase) => Promise<void>;
+  startSession: (db: SQLiteDatabase) => Promise<boolean>;
   revealCard: () => void;
   submitAnswer: (db: SQLiteDatabase, isCorrect: boolean) => Promise<void>;
   endSession: () => void;
@@ -195,7 +195,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       const dueCards = await getDueCards(db);
 
       if (dueCards.length === 0) {
-        return;
+        return false;
       }
 
       // Shuffle the cards for variety
@@ -211,6 +211,8 @@ export const useDeckStore = create<DeckState>((set, get) => ({
           totalCards: shuffled.length,
         },
       });
+      
+      return true;
     } catch (error) {
       console.error('Failed to start session:', error);
       throw error;
