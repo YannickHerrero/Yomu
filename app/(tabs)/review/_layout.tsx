@@ -2,7 +2,11 @@ import { Stack } from 'expo-router';
 
 export default function ReviewLayout() {
   return (
-    <Stack>
+    <Stack
+      screenOptions={{
+        headerShown: true,
+      }}
+    >
       <Stack.Screen
         name="index"
         options={{
@@ -14,6 +18,7 @@ export default function ReviewLayout() {
         options={{
           title: 'Review Session',
           headerBackTitle: 'Back',
+          presentation: 'modal',
         }}
       />
       <Stack.Screen
