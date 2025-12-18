@@ -32,15 +32,16 @@ type DeckCardRow = {
  */
 export async function addCardToDeck(
   db: SQLiteDatabase,
-  dictionaryId: number
+  dictionaryId: number,
+  sessionId?: number
 ): Promise<number> {
   const now = new Date().toISOString();
   const dueDate = calculateDueDate(SRS_STAGES.APPRENTICE_1);
 
   const result = await db.runAsync(
-    `INSERT INTO deck_cards (dictionary_id, added_at, due_date, stage, current_incorrect_count)
-     VALUES (?, ?, ?, ?, ?)`,
-    [dictionaryId, now, dueDate, SRS_STAGES.APPRENTICE_1, 0]
+    `INSERT INTO deck_cards (dictionary_id, added_at, due_date, stage, current_incorrect_count, session_id)
+     VALUES (?, ?, ?, ?, ?, ?)`,
+    [dictionaryId, now, dueDate, SRS_STAGES.APPRENTICE_1, 0, sessionId ?? null]
   );
 
   return result.lastInsertRowId;

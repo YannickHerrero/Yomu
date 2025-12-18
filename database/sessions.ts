@@ -5,6 +5,7 @@ export type ReadingSession = {
   startedAt: string;
   endedAt: string | null;
   durationSeconds: number | null;
+  cardsAddedCount: number;
 };
 
 type SessionRow = {
@@ -12,6 +13,7 @@ type SessionRow = {
   started_at: string;
   ended_at: string | null;
   duration_seconds: number | null;
+  cards_added_count: number;
 };
 
 /**
@@ -34,15 +36,16 @@ export async function startSession(db: SQLiteDatabase): Promise<number> {
 export async function endSession(
   db: SQLiteDatabase,
   sessionId: number,
-  durationSeconds: number
+  durationSeconds: number,
+  cardsAddedCount: number = 0
 ): Promise<void> {
   const now = new Date().toISOString();
 
   await db.runAsync(
     `UPDATE reading_sessions 
-     SET ended_at = ?, duration_seconds = ?
+     SET ended_at = ?, duration_seconds = ?, cards_added_count = ?
      WHERE id = ?`,
-    [now, durationSeconds, sessionId]
+    [now, durationSeconds, cardsAddedCount, sessionId]
   );
 }
 
@@ -148,11 +151,41 @@ export async function deleteSession(
   await db.runAsync(`DELETE FROM reading_sessions WHERE id = ?`, [sessionId]);
 }
 
+/**
+ * Get cards added during a specific session
+ */
+export async function getCardsAddedInSession(
+  db: SQLiteDatabase,
+  sessionId: number
+): Promise<number> {
+  const result = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM deck_cards WHERE session_id = ?`,
+    [sessionId]
+  );
+  return result?.count ?? 0;
+}
+
+/**
+ * Increment cards added count for active session
+ */
+export async function incrementSessionCardsCount(
+  db: SQLiteDatabase,
+  sessionId: number
+): Promise<void> {
+  await db.runAsync(
+    `UPDATE reading_sessions 
+     SET cards_added_count = cards_added_count + 1
+     WHERE id = ?`,
+    [sessionId]
+  );
+}
+
 function mapRowToSession(row: SessionRow): ReadingSession {
   return {
     id: row.id,
     startedAt: row.started_at,
     endedAt: row.ended_at,
     durationSeconds: row.duration_seconds,
+    cardsAddedCount: row.cards_added_count ?? 0,
   };
 }
