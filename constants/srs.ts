@@ -1,6 +1,7 @@
 // SRS Constants based on WaniKani system
 
 export const SRS_STAGES = {
+  NEW: 0, // New cards - not yet reviewed
   APPRENTICE_1: 1,
   APPRENTICE_2: 2,
   APPRENTICE_3: 3,
@@ -14,6 +15,7 @@ export const SRS_STAGES = {
 
 // Intervals in seconds to next review
 export const SRS_INTERVALS: Record<number, number | null> = {
+  0: 0, // New - immediately due
   1: 4 * 60 * 60, // 4 hours
   2: 8 * 60 * 60, // 8 hours
   3: 24 * 60 * 60, // 1 day
@@ -27,6 +29,7 @@ export const SRS_INTERVALS: Record<number, number | null> = {
 
 // Group names for display
 export const SRS_GROUP_NAMES: Record<number, string> = {
+  0: 'New',
   1: 'Apprentice 1',
   2: 'Apprentice 2',
   3: 'Apprentice 3',
@@ -49,10 +52,11 @@ export const SRS_GROUP_COLORS: Record<string, string> = {
 
 // Helper to get group name from stage
 export function getGroupFromStage(stage: number): string {
+  if (stage === 0) return 'new';
   if (stage >= 1 && stage <= 4) return 'apprentice';
   if (stage >= 5 && stage <= 6) return 'guru';
   if (stage === 7) return 'master';
   if (stage === 8) return 'enlightened';
   if (stage === 9) return 'burned';
-  return 'apprentice';
+  return 'new';
 }

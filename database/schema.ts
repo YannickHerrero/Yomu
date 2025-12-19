@@ -70,6 +70,9 @@ async function createTables(db: SQLiteDatabase): Promise<void> {
       stage INTEGER DEFAULT 1,
       current_incorrect_count INTEGER DEFAULT 0,
       session_id INTEGER,
+      example_sentence TEXT,
+      translated_sentence TEXT,
+      image_path TEXT,
       FOREIGN KEY (dictionary_id) REFERENCES dictionary(id),
       FOREIGN KEY (session_id) REFERENCES reading_sessions(id)
     );
@@ -117,6 +120,22 @@ async function migrateSchema(db: SQLiteDatabase): Promise<void> {
     if (!(await columnExists(db, 'reading_sessions', 'cards_added_count'))) {
       console.log('Migrating reading_sessions: adding cards_added_count column');
       await db.execAsync(`ALTER TABLE reading_sessions ADD COLUMN cards_added_count INTEGER DEFAULT 0`);
+    }
+  }
+
+  // Add example_sentence, translated_sentence, and image_path to deck_cards
+  if (await tableExists(db, 'deck_cards')) {
+    if (!(await columnExists(db, 'deck_cards', 'example_sentence'))) {
+      console.log('Migrating deck_cards: adding example_sentence column');
+      await db.execAsync(`ALTER TABLE deck_cards ADD COLUMN example_sentence TEXT`);
+    }
+    if (!(await columnExists(db, 'deck_cards', 'translated_sentence'))) {
+      console.log('Migrating deck_cards: adding translated_sentence column');
+      await db.execAsync(`ALTER TABLE deck_cards ADD COLUMN translated_sentence TEXT`);
+    }
+    if (!(await columnExists(db, 'deck_cards', 'image_path'))) {
+      console.log('Migrating deck_cards: adding image_path column');
+      await db.execAsync(`ALTER TABLE deck_cards ADD COLUMN image_path TEXT`);
     }
   }
 }

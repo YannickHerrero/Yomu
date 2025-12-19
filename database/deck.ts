@@ -13,6 +13,24 @@ export type DeckCard = {
   kanji: string | null;
   reading: string;
   definitions: string[];
+  // Card-specific content
+  exampleSentence: string | null;
+  translatedSentence: string | null;
+  imagePath: string | null;
+};
+
+export type AddCardData = {
+  dictionaryId: number;
+  exampleSentence?: string | null;
+  translatedSentence?: string | null;
+  imagePath?: string | null;
+  sessionId?: number;
+};
+
+export type UpdateCardData = {
+  exampleSentence?: string | null;
+  translatedSentence?: string | null;
+  imagePath?: string | null;
 };
 
 type DeckCardRow = {
@@ -25,6 +43,9 @@ type DeckCardRow = {
   kanji: string | null;
   reading: string;
   definitions: string;
+  example_sentence: string | null;
+  translated_sentence: string | null;
+  image_path: string | null;
 };
 
 /**
@@ -32,19 +53,82 @@ type DeckCardRow = {
  */
 export async function addCardToDeck(
   db: SQLiteDatabase,
-  dictionaryId: number,
-  sessionId?: number
+  data: AddCardData
 ): Promise<number> {
   const now = new Date().toISOString();
-  const dueDate = calculateDueDate(SRS_STAGES.APPRENTICE_1);
+  // New cards are immediately due (stage 0 has interval of 0)
+  const dueDate = calculateDueDate(SRS_STAGES.NEW);
 
   const result = await db.runAsync(
-    `INSERT INTO deck_cards (dictionary_id, added_at, due_date, stage, current_incorrect_count, session_id)
-     VALUES (?, ?, ?, ?, ?, ?)`,
-    [dictionaryId, now, dueDate, SRS_STAGES.APPRENTICE_1, 0, sessionId ?? null]
+    `INSERT INTO deck_cards (
+      dictionary_id, added_at, due_date, stage, current_incorrect_count, 
+      session_id, example_sentence, translated_sentence, image_path
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+    [
+      data.dictionaryId,
+      now,
+      dueDate,
+      SRS_STAGES.NEW,
+      0,
+      data.sessionId ?? null,
+      data.exampleSentence ?? null,
+      data.translatedSentence ?? null,
+      data.imagePath ?? null,
+    ]
   );
 
   return result.lastInsertRowId;
+}
+
+/**
+ * Update a card's content (sentence, translation, image)
+ */
+export async function updateCardContent(
+  db: SQLiteDatabase,
+  cardId: number,
+  data: UpdateCardData
+): Promise<void> {
+  const updates: string[] = [];
+  const values: (string | null)[] = [];
+
+  if (data.exampleSentence !== undefined) {
+    updates.push('example_sentence = ?');
+    values.push(data.exampleSentence);
+  }
+  if (data.translatedSentence !== undefined) {
+    updates.push('translated_sentence = ?');
+    values.push(data.translatedSentence);
+  }
+  if (data.imagePath !== undefined) {
+    updates.push('image_path = ?');
+    values.push(data.imagePath);
+  }
+
+  if (updates.length === 0) return;
+
+  values.push(cardId.toString());
+  await db.runAsync(
+    `UPDATE deck_cards SET ${updates.join(', ')} WHERE id = ?`,
+    values
+  );
+}
+
+/**
+ * Get a single card by ID
+ */
+export async function getCardById(
+  db: SQLiteDatabase,
+  cardId: number
+): Promise<DeckCard | null> {
+  const row = await db.getFirstAsync<DeckCardRow>(
+    `SELECT dc.*, d.kanji, d.reading, d.definitions
+     FROM deck_cards dc
+     JOIN dict.dictionary d ON dc.dictionary_id = d.id
+     WHERE dc.id = ?`,
+    [cardId]
+  );
+
+  return row ? mapRowToCard(row) : null;
 }
 
 /**
@@ -68,18 +152,38 @@ export async function removeCardByDictionaryId(
 }
 
 /**
- * Get all cards due for review
+ * Get all cards due for review (excludes new cards - stage 0)
  */
 export async function getDueCards(db: SQLiteDatabase): Promise<DeckCard[]> {
   const now = new Date().toISOString();
 
   const rows = await db.getAllAsync<DeckCardRow>(
-    `SELECT dc.*, d.kanji, d.reading, d.definitions
+    `SELECT dc.id, dc.dictionary_id, dc.added_at, dc.due_date, dc.stage, 
+            dc.current_incorrect_count, dc.example_sentence, dc.translated_sentence, 
+            dc.image_path, d.kanji, d.reading, d.definitions
      FROM deck_cards dc
      JOIN dict.dictionary d ON dc.dictionary_id = d.id
-     WHERE dc.stage < ? AND dc.due_date <= ?
+     WHERE dc.stage > ? AND dc.stage < ? AND dc.due_date <= ?
      ORDER BY dc.due_date ASC`,
-    [SRS_STAGES.BURNED, now]
+    [SRS_STAGES.NEW, SRS_STAGES.BURNED, now]
+  );
+
+  return rows.map(mapRowToCard);
+}
+
+/**
+ * Get new cards (stage 0) - ordered by added date
+ */
+export async function getNewCards(db: SQLiteDatabase): Promise<DeckCard[]> {
+  const rows = await db.getAllAsync<DeckCardRow>(
+    `SELECT dc.id, dc.dictionary_id, dc.added_at, dc.due_date, dc.stage, 
+            dc.current_incorrect_count, dc.example_sentence, dc.translated_sentence, 
+            dc.image_path, d.kanji, d.reading, d.definitions
+     FROM deck_cards dc
+     JOIN dict.dictionary d ON dc.dictionary_id = d.id
+     WHERE dc.stage = ?
+     ORDER BY dc.added_at ASC`,
+    [SRS_STAGES.NEW]
   );
 
   return rows.map(mapRowToCard);
@@ -90,7 +194,9 @@ export async function getDueCards(db: SQLiteDatabase): Promise<DeckCard[]> {
  */
 export async function getAllCards(db: SQLiteDatabase): Promise<DeckCard[]> {
   const rows = await db.getAllAsync<DeckCardRow>(
-    `SELECT dc.*, d.kanji, d.reading, d.definitions
+    `SELECT dc.id, dc.dictionary_id, dc.added_at, dc.due_date, dc.stage, 
+            dc.current_incorrect_count, dc.example_sentence, dc.translated_sentence, 
+            dc.image_path, d.kanji, d.reading, d.definitions
      FROM deck_cards dc
      JOIN dict.dictionary d ON dc.dictionary_id = d.id
      WHERE dc.stage < ?
@@ -106,7 +212,9 @@ export async function getAllCards(db: SQLiteDatabase): Promise<DeckCard[]> {
  */
 export async function getBurnedCards(db: SQLiteDatabase): Promise<DeckCard[]> {
   const rows = await db.getAllAsync<DeckCardRow>(
-    `SELECT dc.*, d.kanji, d.reading, d.definitions
+    `SELECT dc.id, dc.dictionary_id, dc.added_at, dc.due_date, dc.stage, 
+            dc.current_incorrect_count, dc.example_sentence, dc.translated_sentence, 
+            dc.image_path, d.kanji, d.reading, d.definitions
      FROM deck_cards dc
      JOIN dict.dictionary d ON dc.dictionary_id = d.id
      WHERE dc.stage = ?
@@ -232,6 +340,8 @@ export async function getDeckStats(db: SQLiteDatabase): Promise<{
   activeCards: number;
   burnedCards: number;
   dueNow: number;
+  dueReviews: number;
+  newCards: number;
   apprentice: number;
   guru: number;
   master: number;
@@ -239,7 +349,7 @@ export async function getDeckStats(db: SQLiteDatabase): Promise<{
 }> {
   const now = new Date().toISOString();
 
-  const [total, active, burned, due, distribution] = await Promise.all([
+  const [total, active, burned, dueAll, dueReviews, distribution] = await Promise.all([
     db.getFirstAsync<{ count: number }>(`SELECT COUNT(*) as count FROM deck_cards`),
     db.getFirstAsync<{ count: number }>(
       `SELECT COUNT(*) as count FROM deck_cards WHERE stage < ?`,
@@ -249,13 +359,20 @@ export async function getDeckStats(db: SQLiteDatabase): Promise<{
       `SELECT COUNT(*) as count FROM deck_cards WHERE stage = ?`,
       [SRS_STAGES.BURNED]
     ),
+    // All due cards (including new)
     db.getFirstAsync<{ count: number }>(
       `SELECT COUNT(*) as count FROM deck_cards WHERE stage < ? AND due_date <= ?`,
       [SRS_STAGES.BURNED, now]
     ),
+    // Due reviews only (excluding new cards)
+    db.getFirstAsync<{ count: number }>(
+      `SELECT COUNT(*) as count FROM deck_cards WHERE stage > ? AND stage < ? AND due_date <= ?`,
+      [SRS_STAGES.NEW, SRS_STAGES.BURNED, now]
+    ),
     db.getAllAsync<{ group_name: string; count: number }>(
       `SELECT 
         CASE 
+          WHEN stage = 0 THEN 'new'
           WHEN stage BETWEEN 1 AND 4 THEN 'apprentice'
           WHEN stage BETWEEN 5 AND 6 THEN 'guru'
           WHEN stage = 7 THEN 'master'
@@ -275,7 +392,9 @@ export async function getDeckStats(db: SQLiteDatabase): Promise<{
     totalCards: total?.count ?? 0,
     activeCards: active?.count ?? 0,
     burnedCards: burned?.count ?? 0,
-    dueNow: due?.count ?? 0,
+    dueNow: dueAll?.count ?? 0,
+    dueReviews: dueReviews?.count ?? 0,
+    newCards: distMap['new'] ?? 0,
     apprentice: distMap['apprentice'] ?? 0,
     guru: distMap['guru'] ?? 0,
     master: distMap['master'] ?? 0,
@@ -306,5 +425,8 @@ function mapRowToCard(row: DeckCardRow): DeckCard {
     kanji: row.kanji,
     reading: row.reading,
     definitions: JSON.parse(row.definitions),
+    exampleSentence: row.example_sentence,
+    translatedSentence: row.translated_sentence,
+    imagePath: row.image_path,
   };
 }

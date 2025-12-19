@@ -2,7 +2,7 @@ import { SRS_INTERVALS, SRS_STAGES } from '@/constants/srs';
 
 /**
  * Calculate new SRS stage based on WaniKani formula
- * @param currentStage - Current SRS stage (1-9)
+ * @param currentStage - Current SRS stage (0-9)
  * @param isCorrect - Whether the answer was correct
  * @param incorrectCount - Number of incorrect answers in this session
  * @returns New SRS stage
@@ -12,12 +12,19 @@ export function calculateNewStage(
   isCorrect: boolean,
   incorrectCount: number
 ): number {
+  // New cards (stage 0) always go to Apprentice 1 after first review
+  // regardless of correct/incorrect
+  if (currentStage === SRS_STAGES.NEW) {
+    return SRS_STAGES.APPRENTICE_1;
+  }
+
   // Correct answer: advance one stage
   if (isCorrect) {
     return Math.min(currentStage + 1, SRS_STAGES.BURNED);
   }
 
   // Incorrect answer: apply WaniKani penalty formula
+  // But never go below Apprentice 1 (can't go back to New)
   const incorrectAdjustmentCount = Math.ceil(incorrectCount / 2);
   const srsPenaltyFactor = currentStage >= SRS_STAGES.GURU_1 ? 2 : 1;
   const newStage = currentStage - incorrectAdjustmentCount * srsPenaltyFactor;
