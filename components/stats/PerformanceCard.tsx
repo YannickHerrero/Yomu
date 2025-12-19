@@ -32,7 +32,7 @@ export function PerformanceCard({
 
         <View style={styles.gaugeContainer}>
           <View style={styles.circularGauge}>
-            <Text style={styles.percentage}>
+            <Text style={styles.percentage} numberOfLines={1} adjustsFontSizeToFit>
               {successRate.toFixed(1)}%
             </Text>
             <View
@@ -106,11 +106,13 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     position: 'relative',
+    paddingHorizontal: 20,
   },
   percentage: {
-    fontSize: 42,
+    fontSize: 36,
     fontWeight: '700',
     color: PlatformColor('label'),
+    textAlign: 'center',
   },
   progressRing: {
     position: 'absolute',
