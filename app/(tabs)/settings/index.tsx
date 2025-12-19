@@ -7,6 +7,7 @@ import {
   PlatformColor,
   Alert,
   Linking,
+  TextInput,
 } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { Host, Picker, Button } from '@expo/ui/swift-ui';
@@ -15,7 +16,11 @@ import { getDeckStats, addMockCards } from '@/database/deck';
 import { getTotalReviews, getStudyDays } from '@/database/stats';
 import { addMockReviewHistory } from '@/database/reviewHistory';
 import { useThemeStore } from '@/stores/useThemeStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
+import { validateApiKey } from '@/utils/deepl';
 import Constants from 'expo-constants';
+
+const NEW_CARDS_BATCH_OPTIONS = [5, 10, 15, 20, 25, 30];
 
 type ThemeOption = { value: 'system' | 'light' | 'dark'; label: string };
 
@@ -36,11 +41,56 @@ type DataStats = {
 export default function SettingsScreen() {
   const { db } = useDatabase();
   const { mode, setMode } = useThemeStore();
+  const { deeplApiKey, newCardsPerBatch, loadSettings, saveApiKey, setNewCardsPerBatch } = useSettingsStore();
   const [dataStats, setDataStats] = useState<DataStats | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isAddingMock, setIsAddingMock] = useState(false);
+  const [apiKeyInput, setApiKeyInput] = useState('');
+  const [isValidatingKey, setIsValidatingKey] = useState(false);
+  const [apiKeyStatus, setApiKeyStatus] = useState<'none' | 'valid' | 'invalid'>('none');
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
+
+  // Load settings on mount
+  useEffect(() => {
+    loadSettings();
+  }, [loadSettings]);
+
+  // Set input when API key is loaded
+  useEffect(() => {
+    if (deeplApiKey) {
+      setApiKeyInput(deeplApiKey);
+      setApiKeyStatus('valid');
+    }
+  }, [deeplApiKey]);
+
+  // Handle API key save
+  const handleSaveApiKey = useCallback(async () => {
+    const trimmedKey = apiKeyInput.trim();
+    
+    if (!trimmedKey) {
+      await saveApiKey('');
+      setApiKeyStatus('none');
+      return;
+    }
+
+    setIsValidatingKey(true);
+    try {
+      const isValid = await validateApiKey(trimmedKey);
+      if (isValid) {
+        await saveApiKey(trimmedKey);
+        setApiKeyStatus('valid');
+      } else {
+        setApiKeyStatus('invalid');
+        Alert.alert('Invalid API Key', 'The DeepL API key could not be validated. Please check and try again.');
+      }
+    } catch {
+      setApiKeyStatus('invalid');
+      Alert.alert('Error', 'Failed to validate API key. Please check your connection.');
+    } finally {
+      setIsValidatingKey(false);
+    }
+  }, [apiKeyInput, saveApiKey]);
 
   // Load data statistics
   const loadStats = useCallback(async () => {
@@ -78,6 +128,17 @@ export default function SettingsScreen() {
       }
     },
     [setMode]
+  );
+
+  // Handle new cards per batch change
+  const handleNewCardsPerBatchChange = useCallback(
+    (event: { nativeEvent: { index: number; label: string } }) => {
+      const selectedValue = NEW_CARDS_BATCH_OPTIONS[event.nativeEvent.index];
+      if (selectedValue !== undefined) {
+        setNewCardsPerBatch(selectedValue);
+      }
+    },
+    [setNewCardsPerBatch]
   );
 
   // Handle reset learning progress
@@ -163,6 +224,7 @@ export default function SettingsScreen() {
   }, [db, loadStats]);
 
   const selectedThemeIndex = THEME_OPTIONS.findIndex((opt) => opt.value === mode);
+  const selectedBatchIndex = NEW_CARDS_BATCH_OPTIONS.indexOf(newCardsPerBatch);
 
   return (
     <ScrollView
@@ -187,6 +249,70 @@ export default function SettingsScreen() {
                   onOptionSelected={handleThemeChange}
                   variant="segmented"
                 />
+              </Host>
+            </View>
+          </View>
+        </GlassView>
+      </View>
+
+      {/* Reviews Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Reviews</Text>
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>New Cards Per Batch</Text>
+            <Text style={styles.settingDescription}>
+              Number of new cards to learn in each session
+            </Text>
+            <View style={styles.pickerWrapper}>
+              <Host style={styles.pickerHost}>
+                <Picker
+                  options={NEW_CARDS_BATCH_OPTIONS.map(n => n.toString())}
+                  selectedIndex={selectedBatchIndex >= 0 ? selectedBatchIndex : 1}
+                  onOptionSelected={handleNewCardsPerBatchChange}
+                  variant="segmented"
+                />
+              </Host>
+            </View>
+          </View>
+        </GlassView>
+      </View>
+
+      {/* API Keys Section */}
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>API Keys</Text>
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          <View style={styles.settingRow}>
+            <Text style={styles.settingLabel}>DeepL API Key</Text>
+            <Text style={styles.settingDescription}>
+              Used for translating example sentences. Get a free key at deepl.com
+            </Text>
+            <View style={styles.apiKeyInputContainer}>
+              <TextInput
+                style={styles.apiKeyInput}
+                value={apiKeyInput}
+                onChangeText={setApiKeyInput}
+                placeholder="Enter your DeepL API key"
+                placeholderTextColor={PlatformColor('tertiaryLabel')}
+                autoCapitalize="none"
+                autoCorrect={false}
+                secureTextEntry={apiKeyStatus === 'valid'}
+              />
+              {apiKeyStatus === 'valid' && (
+                <Text style={styles.apiKeyStatusValid}>Valid</Text>
+              )}
+              {apiKeyStatus === 'invalid' && (
+                <Text style={styles.apiKeyStatusInvalid}>Invalid</Text>
+              )}
+            </View>
+            <View style={styles.apiKeyButtonContainer}>
+              <Host matchContents>
+                <Button
+                  onPress={handleSaveApiKey}
+                  disabled={isValidatingKey}
+                >
+                  {isValidatingKey ? 'Validating...' : 'Save Key'}
+                </Button>
               </Host>
             </View>
           </View>
@@ -504,5 +630,35 @@ const styles = StyleSheet.create({
   },
   bottomSpacer: {
     height: 32,
+  },
+  apiKeyInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginTop: 8,
+  },
+  apiKeyInput: {
+    flex: 1,
+    fontSize: 15,
+    color: PlatformColor('label'),
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: PlatformColor('quaternarySystemFill'),
+    borderRadius: 8,
+  },
+  apiKeyStatusValid: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: PlatformColor('label'),
+    marginLeft: 8,
+  },
+  apiKeyStatusInvalid: {
+    fontSize: 13,
+    fontWeight: '600',
+    color: PlatformColor('label'),
+    marginLeft: 8,
+  },
+  apiKeyButtonContainer: {
+    marginTop: 12,
+    alignItems: 'flex-start',
   },
 });
