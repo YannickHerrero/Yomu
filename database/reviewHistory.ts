@@ -90,6 +90,28 @@ export async function getRecentReviews(
 }
 
 /**
+ * Get count of cards learned (moved from stage 0 to stage 1+) within a date range
+ * A card is "learned" the first time it successfully moves out of the NEW stage
+ */
+export async function getLearnedCardsCount(
+  db: SQLiteDatabase,
+  startDate: string,
+  endDate: string
+): Promise<number> {
+  const result = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(DISTINCT card_id) as count 
+     FROM review_history 
+     WHERE stage_before = 0 
+       AND stage_after > 0 
+       AND is_correct = 1
+       AND reviewed_at >= ? 
+       AND reviewed_at < ?`,
+    [startDate, endDate]
+  );
+  return result?.count ?? 0;
+}
+
+/**
  * Generate mock review history for testing
  * Creates realistic review patterns over the past 90 days
  */

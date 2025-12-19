@@ -13,7 +13,7 @@ import {
   updateCardContent,
   unburnCard as unburnCardDb,
 } from '@/database/deck';
-import { recordReview } from '@/database/reviewHistory';
+import { recordReview, getLearnedCardsCount } from '@/database/reviewHistory';
 import { calculateNewStage } from '@/utils/srs';
 import { useSessionStore } from './useSessionStore';
 import { updateBadgeCount } from '@/utils/backgroundBadgeTask';
@@ -27,6 +27,8 @@ export type DeckStats = {
   dueNow: number;
   dueReviews: number;
   newCards: number;
+  learnedToday: number;
+  learnedThisWeek: number;
   apprentice: number;
   guru: number;
   master: number;
@@ -90,11 +92,55 @@ const initialStats: DeckStats = {
   dueNow: 0,
   dueReviews: 0,
   newCards: 0,
+  learnedToday: 0,
+  learnedThisWeek: 0,
   apprentice: 0,
   guru: 0,
   master: 0,
   enlightened: 0,
 };
+
+// Helper to get date ranges for learned stats
+function getDateRanges() {
+  const now = new Date();
+  
+  // Today: start of today to start of tomorrow
+  const todayStart = new Date(now);
+  todayStart.setHours(0, 0, 0, 0);
+  const tomorrowStart = new Date(todayStart);
+  tomorrowStart.setDate(tomorrowStart.getDate() + 1);
+  
+  // This week: start of week (Monday) to start of next week
+  const weekStart = new Date(now);
+  const dayOfWeek = weekStart.getDay();
+  const daysToMonday = dayOfWeek === 0 ? 6 : dayOfWeek - 1; // Sunday = 0
+  weekStart.setDate(weekStart.getDate() - daysToMonday);
+  weekStart.setHours(0, 0, 0, 0);
+  const nextWeekStart = new Date(weekStart);
+  nextWeekStart.setDate(nextWeekStart.getDate() + 7);
+  
+  return {
+    todayStart: todayStart.toISOString(),
+    tomorrowStart: tomorrowStart.toISOString(),
+    weekStart: weekStart.toISOString(),
+    nextWeekStart: nextWeekStart.toISOString(),
+  };
+}
+
+// Helper to get full stats including learned counts
+async function getFullStats(db: SQLiteDatabase): Promise<DeckStats> {
+  const dateRanges = getDateRanges();
+  const [deckStats, learnedToday, learnedThisWeek] = await Promise.all([
+    getDeckStats(db),
+    getLearnedCardsCount(db, dateRanges.todayStart, dateRanges.tomorrowStart),
+    getLearnedCardsCount(db, dateRanges.weekStart, dateRanges.nextWeekStart),
+  ]);
+  return {
+    ...deckStats,
+    learnedToday,
+    learnedThisWeek,
+  };
+}
 
 export const useDeckStore = create<DeckState>((set, get) => ({
   // Initial state
@@ -113,7 +159,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
         getAllCards(db),
         getDueCards(db),
         getBurnedCards(db),
-        getDeckStats(db),
+        getFullStats(db),
       ]);
       set({ cards, dueCards, burnedCards, stats });
     } catch (error) {
@@ -127,7 +173,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   // Refresh just stats
   refreshStats: async (db: SQLiteDatabase) => {
     try {
-      const stats = await getDeckStats(db);
+      const stats = await getFullStats(db);
       set({ stats });
     } catch (error) {
       console.error('Failed to refresh stats:', error);
@@ -138,7 +184,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   // Refresh due cards
   refreshDueCards: async (db: SQLiteDatabase) => {
     try {
-      const [dueCards, stats] = await Promise.all([getDueCards(db), getDeckStats(db)]);
+      const [dueCards, stats] = await Promise.all([getDueCards(db), getFullStats(db)]);
       set({ dueCards, stats });
     } catch (error) {
       console.error('Failed to refresh due cards:', error);
@@ -170,7 +216,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       const [cards, dueCards, stats] = await Promise.all([
         getAllCards(db),
         getDueCards(db),
-        getDeckStats(db),
+        getFullStats(db),
       ]);
       set({ cards, dueCards, stats });
     } catch (error) {
@@ -204,7 +250,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       const [cards, dueCards, stats] = await Promise.all([
         getAllCards(db),
         getDueCards(db),
-        getDeckStats(db),
+        getFullStats(db),
       ]);
       set({ cards, dueCards, stats });
     } catch (error) {
@@ -222,7 +268,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
         getAllCards(db),
         getDueCards(db),
         getBurnedCards(db),
-        getDeckStats(db),
+        getFullStats(db),
       ]);
       set({ cards, dueCards, burnedCards, stats });
     } catch (error) {

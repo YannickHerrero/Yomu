@@ -159,6 +159,35 @@ export default function ReviewScreen() {
         </Pressable>
       </View>
 
+      {/* Learned Stats */}
+      <View style={styles.navigationContainer}>
+        <View style={styles.navButtonWrapper}>
+          <GlassView style={styles.navButton} glassEffectStyle="regular">
+            <SymbolView
+              name="graduationcap.fill"
+              size={32}
+              tintColor={PlatformColor('label')}
+              style={styles.navButtonIcon}
+            />
+            <Text style={styles.navButtonText}>Learned Today</Text>
+            <Text style={styles.navButtonSubtext}>{stats.learnedToday} cards</Text>
+          </GlassView>
+        </View>
+
+        <View style={styles.navButtonWrapper}>
+          <GlassView style={styles.navButton} glassEffectStyle="regular">
+            <SymbolView
+              name="calendar"
+              size={32}
+              tintColor={PlatformColor('label')}
+              style={styles.navButtonIcon}
+            />
+            <Text style={styles.navButtonText}>This Week</Text>
+            <Text style={styles.navButtonSubtext}>{stats.learnedThisWeek} cards</Text>
+          </GlassView>
+        </View>
+      </View>
+
       {/* Empty State Message */}
       {stats.totalCards === 0 && (
         <GlassView style={styles.emptyCard} glassEffectStyle="regular">
