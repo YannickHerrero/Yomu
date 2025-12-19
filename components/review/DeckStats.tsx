@@ -5,7 +5,9 @@ import type { DeckStats as DeckStatsType } from '@/stores/useDeckStore';
 
 type DeckStatsProps = {
   stats: DeckStatsType;
-  onPress?: () => void;
+  newCardsPerBatch: number;
+  onReviewPress?: () => void;
+  onNewCardsPress?: () => void;
 };
 
 type DistributionBarProps = {
@@ -40,23 +42,44 @@ function DistributionBar({ label, count, total, color }: DistributionBarProps) {
   );
 }
 
-export function DeckStats({ stats, onPress }: DeckStatsProps) {
+export function DeckStats({ stats, newCardsPerBatch, onReviewPress, onNewCardsPress }: DeckStatsProps) {
   const totalActive = stats.activeCards;
+  const newCardsToShow = Math.min(stats.newCards, newCardsPerBatch);
 
   return (
     <View style={styles.container}>
-      {/* Due Cards Card */}
-      <Pressable onPress={onPress}>
-        <GlassView style={styles.dueCard} glassEffectStyle="regular" isInteractive>
-          <Text style={styles.dueCount}>{stats.dueNow}</Text>
-          <Text style={styles.dueLabel}>cards due</Text>
-        </GlassView>
-      </Pressable>
+      {/* Session Buttons - Side by Side */}
+      <View style={styles.sessionButtonsRow}>
+        {/* Reviews Due Card */}
+        <Pressable onPress={onReviewPress} style={styles.sessionButtonWrapper}>
+          <GlassView style={styles.sessionCard} glassEffectStyle="regular" isInteractive>
+            <Text style={styles.sessionCount}>{stats.dueReviews}</Text>
+            <Text style={styles.sessionLabel}>reviews</Text>
+          </GlassView>
+        </Pressable>
+
+        {/* New Cards Card */}
+        <Pressable onPress={onNewCardsPress} style={styles.sessionButtonWrapper}>
+          <GlassView style={styles.sessionCard} glassEffectStyle="regular" isInteractive>
+            <Text style={styles.sessionCount}>{newCardsToShow}</Text>
+            <Text style={styles.sessionLabel}>new cards</Text>
+            {stats.newCards > newCardsPerBatch && (
+              <Text style={styles.sessionSubtext}>of {stats.newCards}</Text>
+            )}
+          </GlassView>
+        </Pressable>
+      </View>
 
       {/* Distribution Card */}
       <GlassView style={styles.distributionCard} glassEffectStyle="regular">
         <Text style={styles.sectionTitle}>Distribution</Text>
 
+        <DistributionBar
+          label="New"
+          count={stats.newCards}
+          total={totalActive}
+          color={PlatformColor('label')}
+        />
         <DistributionBar
           label="Apprentice"
           count={stats.apprentice}
@@ -105,21 +128,33 @@ const styles = StyleSheet.create({
   container: {
     gap: 16,
   },
-  dueCard: {
-    padding: 24,
+  sessionButtonsRow: {
+    flexDirection: 'row',
+    gap: 12,
+  },
+  sessionButtonWrapper: {
+    flex: 1,
+  },
+  sessionCard: {
+    padding: 20,
     borderRadius: 16,
     alignItems: 'center',
   },
-  dueCount: {
-    fontSize: 64,
+  sessionCount: {
+    fontSize: 48,
     fontWeight: '700',
     color: PlatformColor('label'),
     fontVariant: ['tabular-nums'],
   },
-  dueLabel: {
-    fontSize: 18,
+  sessionLabel: {
+    fontSize: 16,
     color: PlatformColor('secondaryLabel'),
-    marginTop: -8,
+    marginTop: -4,
+  },
+  sessionSubtext: {
+    fontSize: 12,
+    color: PlatformColor('tertiaryLabel'),
+    marginTop: 2,
   },
   distributionCard: {
     padding: 20,

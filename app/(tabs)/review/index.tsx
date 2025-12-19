@@ -5,18 +5,21 @@ import { GlassView } from 'expo-glass-effect';
 import { SymbolView } from 'expo-symbols';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { useDeckStore } from '@/stores/useDeckStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { DeckStats } from '@/components/review/DeckStats';
 
 export default function ReviewScreen() {
   const { db, isLoading: dbLoading } = useDatabase();
-  const { stats, loadAllData, startSession } = useDeckStore();
+  const { stats, loadAllData, startSession, startNewCardsSession } = useDeckStore();
+  const { newCardsPerBatch, loadSettings } = useSettingsStore();
 
   // Load data on mount
   useEffect(() => {
+    loadSettings();
     if (db) {
       loadAllData(db);
     }
-  }, [db, loadAllData]);
+  }, [db, loadAllData, loadSettings]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -30,11 +33,11 @@ export default function ReviewScreen() {
   const handleStartReview = useCallback(async () => {
     if (!db) return;
 
-    // Show alert if no cards due
-    if (stats.dueNow === 0) {
+    // Show alert if no reviews due
+    if (stats.dueReviews === 0) {
       Alert.alert(
-        'No Cards Due',
-        'You have no cards due for review right now. Check back later!',
+        'No Reviews Due',
+        'You have no reviews due right now. Check back later!',
         [{ text: 'OK' }]
       );
       return;
@@ -59,7 +62,41 @@ export default function ReviewScreen() {
         [{ text: 'OK' }]
       );
     }
-  }, [db, startSession, stats.dueNow]);
+  }, [db, startSession, stats.dueReviews]);
+
+  const handleStartNewCards = useCallback(async () => {
+    if (!db) return;
+
+    // Show alert if no new cards
+    if (stats.newCards === 0) {
+      Alert.alert(
+        'No New Cards',
+        'You have no new cards to learn. Add some words from the dictionary!',
+        [{ text: 'OK' }]
+      );
+      return;
+    }
+
+    try {
+      const sessionStarted = await startNewCardsSession(db, newCardsPerBatch);
+      if (sessionStarted) {
+        router.push('/review/session');
+      } else {
+        Alert.alert(
+          'No Cards Available',
+          'Unable to start new cards session. Please try again.',
+          [{ text: 'OK' }]
+        );
+      }
+    } catch (error) {
+      console.error('Failed to start new cards session:', error);
+      Alert.alert(
+        'Error',
+        'Failed to start new cards session. Please try again.',
+        [{ text: 'OK' }]
+      );
+    }
+  }, [db, startNewCardsSession, stats.newCards, newCardsPerBatch]);
 
   const handleViewDeck = useCallback(() => {
     router.push('/review/deck');
@@ -86,7 +123,12 @@ export default function ReviewScreen() {
       showsVerticalScrollIndicator={false}
     >
       {/* Stats Display */}
-      <DeckStats stats={stats} onPress={handleStartReview} />
+      <DeckStats
+        stats={stats}
+        newCardsPerBatch={newCardsPerBatch}
+        onReviewPress={handleStartReview}
+        onNewCardsPress={handleStartNewCards}
+      />
 
       {/* Navigation Buttons */}
       <View style={styles.navigationContainer}>

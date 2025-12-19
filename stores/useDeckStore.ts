@@ -1,14 +1,16 @@
 import { create } from 'zustand';
 import type { SQLiteDatabase } from 'expo-sqlite';
-import type { DeckCard } from '@/database/deck';
+import type { DeckCard, AddCardData, UpdateCardData } from '@/database/deck';
 import {
   getDueCards,
+  getNewCards,
   getAllCards,
   getBurnedCards,
   getDeckStats,
   addCardToDeck,
   removeCardFromDeck,
   updateCardAfterReview,
+  updateCardContent,
   unburnCard as unburnCardDb,
 } from '@/database/deck';
 import { recordReview } from '@/database/reviewHistory';
@@ -23,6 +25,8 @@ export type DeckStats = {
   activeCards: number;
   burnedCards: number;
   dueNow: number;
+  dueReviews: number;
+  newCards: number;
   apprentice: number;
   guru: number;
   master: number;
@@ -59,12 +63,14 @@ type DeckState = {
   loadAllData: (db: SQLiteDatabase) => Promise<void>;
   refreshStats: (db: SQLiteDatabase) => Promise<void>;
   refreshDueCards: (db: SQLiteDatabase) => Promise<void>;
-  addCard: (db: SQLiteDatabase, dictionaryId: number) => Promise<void>;
+  addCard: (db: SQLiteDatabase, data: AddCardData) => Promise<void>;
+  updateCard: (db: SQLiteDatabase, cardId: number, data: UpdateCardData) => Promise<void>;
   removeCard: (db: SQLiteDatabase, cardId: number) => Promise<void>;
   unburnCard: (db: SQLiteDatabase, cardId: number) => Promise<void>;
 
   // Session actions
   startSession: (db: SQLiteDatabase) => Promise<boolean>;
+  startNewCardsSession: (db: SQLiteDatabase, batchSize: number) => Promise<boolean>;
   revealCard: () => void;
   submitAnswer: (db: SQLiteDatabase, isCorrect: boolean) => Promise<void>;
   endSession: () => void;
@@ -82,6 +88,8 @@ const initialStats: DeckStats = {
   activeCards: 0,
   burnedCards: 0,
   dueNow: 0,
+  dueReviews: 0,
+  newCards: 0,
   apprentice: 0,
   guru: 0,
   master: 0,
@@ -139,7 +147,7 @@ export const useDeckStore = create<DeckState>((set, get) => ({
   },
 
   // Add a card to deck
-  addCard: async (db: SQLiteDatabase, dictionaryId: number) => {
+  addCard: async (db: SQLiteDatabase, data: AddCardData) => {
     try {
       // Check if there's an active reading session
       const sessionState = useSessionStore.getState();
@@ -147,7 +155,10 @@ export const useDeckStore = create<DeckState>((set, get) => ({
 
       console.log('Adding card to deck, active session:', activeSessionId);
 
-      await addCardToDeck(db, dictionaryId, activeSessionId ?? undefined);
+      await addCardToDeck(db, {
+        ...data,
+        sessionId: data.sessionId ?? activeSessionId ?? undefined,
+      });
 
       // If there's an active session, increment the cards added counter
       if (activeSessionId) {
@@ -164,6 +175,23 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       set({ cards, dueCards, stats });
     } catch (error) {
       console.error('Failed to add card:', error);
+      throw error;
+    }
+  },
+
+  // Update a card's content
+  updateCard: async (db: SQLiteDatabase, cardId: number, data: UpdateCardData) => {
+    try {
+      await updateCardContent(db, cardId, data);
+      // Refresh data
+      const [cards, dueCards, burnedCards] = await Promise.all([
+        getAllCards(db),
+        getDueCards(db),
+        getBurnedCards(db),
+      ]);
+      set({ cards, dueCards, burnedCards });
+    } catch (error) {
+      console.error('Failed to update card:', error);
       throw error;
     }
   },
@@ -203,10 +231,10 @@ export const useDeckStore = create<DeckState>((set, get) => ({
     }
   },
 
-  // Start a review session
+  // Start a review session (excludes new cards)
   startSession: async (db: SQLiteDatabase) => {
     try {
-      // Get fresh due cards
+      // Get fresh due cards (excludes new cards)
       const dueCards = await getDueCards(db);
 
       if (dueCards.length === 0) {
@@ -230,6 +258,40 @@ export const useDeckStore = create<DeckState>((set, get) => ({
       return true;
     } catch (error) {
       console.error('Failed to start session:', error);
+      throw error;
+    }
+  },
+
+  // Start a new cards learning session
+  startNewCardsSession: async (db: SQLiteDatabase, batchSize: number) => {
+    try {
+      // Get new cards (stage 0)
+      const newCards = await getNewCards(db);
+
+      if (newCards.length === 0) {
+        return false;
+      }
+
+      // Take only up to batchSize cards, oldest first (already sorted by added_at)
+      const batch = newCards.slice(0, batchSize);
+
+      // Shuffle the batch for variety
+      const shuffled = [...batch].sort(() => Math.random() - 0.5);
+
+      set({
+        session: {
+          queue: shuffled.slice(1), // All cards except first
+          currentCard: shuffled[0], // First card
+          isRevealed: false,
+          incorrectCounts: new Map(),
+          results: { correct: 0, incorrect: 0, burned: 0 },
+          totalCards: shuffled.length,
+        },
+      });
+      
+      return true;
+    } catch (error) {
+      console.error('Failed to start new cards session:', error);
       throw error;
     }
   },
