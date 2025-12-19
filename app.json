@@ -14,7 +14,8 @@
       "infoPlist": {
         "NSSupportsLiveActivities": true,
         "NSSupportsLiveActivitiesFrequentUpdates": false,
-        "ITSAppUsesNonExemptEncryption": false
+        "ITSAppUsesNonExemptEncryption": false,
+        "UIBackgroundModes": ["fetch"]
       },
       "entitlements": {}
     },
@@ -47,7 +48,9 @@
         }
       ],
       "expo-sqlite",
-      "expo-live-activity"
+      "expo-live-activity",
+      "expo-notifications",
+      "expo-background-fetch"
     ],
     "experiments": {
       "typedRoutes": true,

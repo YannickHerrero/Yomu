@@ -14,6 +14,7 @@ import {
 import { recordReview } from '@/database/reviewHistory';
 import { calculateNewStage } from '@/utils/srs';
 import { useSessionStore } from './useSessionStore';
+import { updateBadgeCount } from '@/utils/backgroundBadgeTask';
 
 export type { DeckCard } from '@/database/deck';
 
@@ -310,6 +311,11 @@ export const useDeckStore = create<DeckState>((set, get) => ({
         results: newResults,
       },
     });
+
+    // Update app badge when a card is correctly reviewed
+    if (isCorrect) {
+      updateBadgeCount();
+    }
   },
 
   // End the session

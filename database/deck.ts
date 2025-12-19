@@ -283,6 +283,18 @@ export async function getDeckStats(db: SQLiteDatabase): Promise<{
   };
 }
 
+/**
+ * Get just the count of due cards (lightweight for badge updates)
+ */
+export async function getDueCardCount(db: SQLiteDatabase): Promise<number> {
+  const now = new Date().toISOString();
+  const result = await db.getFirstAsync<{ count: number }>(
+    `SELECT COUNT(*) as count FROM deck_cards WHERE stage < ? AND due_date <= ?`,
+    [SRS_STAGES.BURNED, now]
+  );
+  return result?.count ?? 0;
+}
+
 function mapRowToCard(row: DeckCardRow): DeckCard {
   return {
     id: row.id,
