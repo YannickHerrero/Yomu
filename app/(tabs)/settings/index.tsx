@@ -7,7 +7,7 @@ import {
   PlatformColor,
   Alert,
   Linking,
-  TextInput,
+  Pressable,
 } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { Host, Picker, Button } from '@expo/ui/swift-ui';
@@ -41,13 +41,10 @@ type DataStats = {
 export default function SettingsScreen() {
   const { db } = useDatabase();
   const { mode, setMode } = useThemeStore();
-  const { deeplApiKey, newCardsPerBatch, loadSettings, saveApiKey, setNewCardsPerBatch } = useSettingsStore();
+  const { deeplApiKey, newCardsPerBatch, loadSettings, saveApiKey, clearApiKey, setNewCardsPerBatch } = useSettingsStore();
   const [dataStats, setDataStats] = useState<DataStats | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isAddingMock, setIsAddingMock] = useState(false);
-  const [apiKeyInput, setApiKeyInput] = useState('');
-  const [isValidatingKey, setIsValidatingKey] = useState(false);
-  const [apiKeyStatus, setApiKeyStatus] = useState<'none' | 'valid' | 'invalid'>('none');
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -56,41 +53,64 @@ export default function SettingsScreen() {
     loadSettings();
   }, [loadSettings]);
 
-  // Set input when API key is loaded
-  useEffect(() => {
-    if (deeplApiKey) {
-      setApiKeyInput(deeplApiKey);
-      setApiKeyStatus('valid');
-    }
-  }, [deeplApiKey]);
+  // Mask API key for display (e.g., "26ca******6:fx")
+  const getMaskedApiKey = useCallback((key: string) => {
+    if (key.length <= 8) return '****';
+    const start = key.slice(0, 4);
+    const end = key.slice(-4);
+    return `${start}******${end}`;
+  }, []);
 
-  // Handle API key save
-  const handleSaveApiKey = useCallback(async () => {
-    const trimmedKey = apiKeyInput.trim();
-    
-    if (!trimmedKey) {
-      await saveApiKey('');
-      setApiKeyStatus('none');
-      return;
-    }
+  // Handle set/change API key via prompt
+  const handleSetApiKey = useCallback(() => {
+    Alert.prompt(
+      'DeepL API Key',
+      'Enter your DeepL API key. Get a free key at deepl.com',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Save',
+          onPress: async (value?: string) => {
+            const trimmedKey = value?.trim();
+            if (!trimmedKey) return;
 
-    setIsValidatingKey(true);
-    try {
-      const isValid = await validateApiKey(trimmedKey);
-      if (isValid) {
-        await saveApiKey(trimmedKey);
-        setApiKeyStatus('valid');
-      } else {
-        setApiKeyStatus('invalid');
-        Alert.alert('Invalid API Key', 'The DeepL API key could not be validated. Please check and try again.');
-      }
-    } catch {
-      setApiKeyStatus('invalid');
-      Alert.alert('Error', 'Failed to validate API key. Please check your connection.');
-    } finally {
-      setIsValidatingKey(false);
-    }
-  }, [apiKeyInput, saveApiKey]);
+            try {
+              const isValid = await validateApiKey(trimmedKey);
+              if (isValid) {
+                await saveApiKey(trimmedKey);
+                Alert.alert('Success', 'API key saved successfully.');
+              } else {
+                Alert.alert('Invalid API Key', 'The DeepL API key could not be validated. Please check and try again.');
+              }
+            } catch {
+              Alert.alert('Error', 'Failed to validate API key. Please check your connection.');
+            }
+          },
+        },
+      ],
+      'plain-text',
+      '',
+      'default'
+    );
+  }, [saveApiKey]);
+
+  // Handle remove API key
+  const handleRemoveApiKey = useCallback(() => {
+    Alert.alert(
+      'Remove API Key',
+      'Are you sure you want to remove your DeepL API key?',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Remove',
+          style: 'destructive',
+          onPress: async () => {
+            await clearApiKey();
+          },
+        },
+      ]
+    );
+  }, [clearApiKey]);
 
   // Load data statistics
   const loadStats = useCallback(async () => {
@@ -281,42 +301,22 @@ export default function SettingsScreen() {
       {/* API Keys Section */}
       <View style={styles.section}>
         <Text style={styles.sectionTitle}>API Keys</Text>
-        <GlassView style={styles.card} glassEffectStyle="regular">
-          <View style={styles.settingRow}>
-            <Text style={styles.settingLabel}>DeepL API Key</Text>
-            <Text style={styles.settingDescription}>
-              Used for translating example sentences. Get a free key at deepl.com
-            </Text>
-            <View style={styles.apiKeyInputContainer}>
-              <TextInput
-                style={styles.apiKeyInput}
-                value={apiKeyInput}
-                onChangeText={setApiKeyInput}
-                placeholder="Enter your DeepL API key"
-                placeholderTextColor={PlatformColor('tertiaryLabel')}
-                autoCapitalize="none"
-                autoCorrect={false}
-                secureTextEntry={apiKeyStatus === 'valid'}
-              />
-              {apiKeyStatus === 'valid' && (
-                <Text style={styles.apiKeyStatusValid}>Valid</Text>
-              )}
-              {apiKeyStatus === 'invalid' && (
-                <Text style={styles.apiKeyStatusInvalid}>Invalid</Text>
-              )}
+        <Pressable onPress={handleSetApiKey} onLongPress={deeplApiKey ? handleRemoveApiKey : undefined}>
+          <GlassView style={styles.card} glassEffectStyle="regular">
+            <View style={styles.apiKeyRow}>
+              <View style={styles.apiKeyInfo}>
+                <Text style={styles.settingLabel}>DeepL API Key</Text>
+                {deeplApiKey ? (
+                  <Text style={styles.apiKeyMasked}>{getMaskedApiKey(deeplApiKey)}</Text>
+                ) : (
+                  <Text style={styles.settingDescription}>
+                    Used for translating example sentences
+                  </Text>
+                )}
+              </View>
             </View>
-            <View style={styles.apiKeyButtonContainer}>
-              <Host matchContents>
-                <Button
-                  onPress={handleSaveApiKey}
-                  disabled={isValidatingKey}
-                >
-                  {isValidatingKey ? 'Validating...' : 'Save Key'}
-                </Button>
-              </Host>
-            </View>
-          </View>
-        </GlassView>
+          </GlassView>
+        </Pressable>
       </View>
 
       {/* Data & Storage Section */}
@@ -631,34 +631,20 @@ const styles = StyleSheet.create({
   bottomSpacer: {
     height: 32,
   },
-  apiKeyInputContainer: {
+  apiKeyRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginTop: 8,
+    justifyContent: 'space-between',
   },
-  apiKeyInput: {
+  apiKeyInfo: {
     flex: 1,
-    fontSize: 15,
-    color: PlatformColor('label'),
-    paddingVertical: 10,
-    paddingHorizontal: 12,
-    backgroundColor: PlatformColor('quaternarySystemFill'),
-    borderRadius: 8,
+    marginRight: 16,
   },
-  apiKeyStatusValid: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PlatformColor('label'),
-    marginLeft: 8,
+  apiKeyMasked: {
+    fontSize: 14,
+    fontFamily: 'Menlo',
+    color: PlatformColor('secondaryLabel'),
+    marginTop: 2,
   },
-  apiKeyStatusInvalid: {
-    fontSize: 13,
-    fontWeight: '600',
-    color: PlatformColor('label'),
-    marginLeft: 8,
-  },
-  apiKeyButtonContainer: {
-    marginTop: 12,
-    alignItems: 'flex-start',
-  },
+  
 });
