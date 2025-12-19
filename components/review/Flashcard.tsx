@@ -1,7 +1,16 @@
 import React, { useEffect, useRef } from 'react';
-import { View, Text, StyleSheet, PlatformColor, Pressable, Animated } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  PlatformColor,
+  Pressable,
+  Animated,
+  Image,
+} from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import { StageIndicator } from './StageIndicator';
+import { getCardImageUri } from '@/utils/imageStorage';
 import type { DeckCard } from '@/stores/useDeckStore';
 
 type FlashcardProps = {
@@ -36,8 +45,11 @@ export function Flashcard({ card, isRevealed, onReveal, onWrong, onCorrect }: Fl
   // Format definitions
   const definitions = card.definitions.slice(0, 3); // Show max 3 definitions
 
-  // Content to display (same for both states)
-  const cardContent = (
+  // Get image URI if available
+  const imageUri = getCardImageUri(card.imagePath);
+
+  // Front content (not revealed)
+  const frontContent = (
     <>
       {/* Stage indicator */}
       <View style={styles.stageContainer}>
@@ -48,34 +60,70 @@ export function Flashcard({ card, isRevealed, onReveal, onWrong, onCorrect }: Fl
       <View style={styles.wordContainer}>
         <Text style={styles.word}>{displayWord}</Text>
 
+        {/* Example sentence on front (Japanese only, no translation) */}
+        {card.exampleSentence && (
+          <Text style={styles.frontSentence}>{card.exampleSentence}</Text>
+        )}
+
         {/* Tap to reveal hint */}
-        {!isRevealed && <Text style={styles.tapHint}>Tap to reveal</Text>}
+        <Text style={styles.tapHint}>Tap to reveal</Text>
+      </View>
+    </>
+  );
+
+  // Back content (revealed)
+  const backContent = (
+    <>
+      {/* Stage indicator */}
+      <View style={styles.stageContainer}>
+        <StageIndicator stage={card.stage} size="small" />
+      </View>
+
+      {/* Main word with reading */}
+      <View style={styles.backWordContainer}>
+        <Text style={styles.backWord}>{displayWord}</Text>
+        {showReadingSeparately && <Text style={styles.reading}>{card.reading}</Text>}
       </View>
 
       {/* Answer section (revealed) */}
-      {isRevealed && (
-        <Animated.View style={[styles.answerContainer, { opacity: fadeAnim }]}>
-          {/* Reading (if showing kanji) */}
-          {showReadingSeparately && <Text style={styles.reading}>{card.reading}</Text>}
+      <Animated.View style={[styles.answerContainer, { opacity: fadeAnim }]}>
+        {/* Divider */}
+        <View style={styles.divider} />
 
-          {/* Divider */}
-          <View style={styles.divider} />
+        {/* Definitions */}
+        <View style={styles.definitionsContainer}>
+          {definitions.map((def, index) => (
+            <Text key={index} style={styles.definition}>
+              {index + 1}. {def}
+            </Text>
+          ))}
+          {card.definitions.length > 3 && (
+            <Text style={styles.moreDefinitions}>
+              +{card.definitions.length - 3} more
+            </Text>
+          )}
+        </View>
 
-          {/* Definitions */}
-          <View style={styles.definitionsContainer}>
-            {definitions.map((def, index) => (
-              <Text key={index} style={styles.definition}>
-                {index + 1}. {def}
-              </Text>
-            ))}
-            {card.definitions.length > 3 && (
-              <Text style={styles.moreDefinitions}>
-                +{card.definitions.length - 3} more
-              </Text>
-            )}
+        {/* Example sentence with translation */}
+        {card.exampleSentence && (
+          <>
+            <View style={styles.divider} />
+            <View style={styles.sentenceContainer}>
+              <Text style={styles.sentence}>{card.exampleSentence}</Text>
+              {card.translatedSentence && (
+                <Text style={styles.translatedSentence}>{card.translatedSentence}</Text>
+              )}
+            </View>
+          </>
+        )}
+
+        {/* Context image */}
+        {imageUri && (
+          <View style={styles.imageContainer}>
+            <Image source={{ uri: imageUri }} style={styles.image} resizeMode="cover" />
           </View>
-        </Animated.View>
-      )}
+        )}
+      </Animated.View>
     </>
   );
 
@@ -84,7 +132,7 @@ export function Flashcard({ card, isRevealed, onReveal, onWrong, onCorrect }: Fl
     return (
       <Pressable onPress={onReveal}>
         <GlassView style={styles.card} glassEffectStyle="regular">
-          {cardContent}
+          {frontContent}
         </GlassView>
       </Pressable>
     );
@@ -95,7 +143,7 @@ export function Flashcard({ card, isRevealed, onReveal, onWrong, onCorrect }: Fl
     <View style={styles.splitContainer}>
       <Pressable onPress={onWrong} style={styles.leftHalf}>
         <GlassView style={styles.card} glassEffectStyle="regular">
-          {cardContent}
+          {backContent}
         </GlassView>
       </Pressable>
 
@@ -116,6 +164,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     top: 16,
     right: 16,
+    zIndex: 1,
   },
   wordContainer: {
     flex: 1,
@@ -129,19 +178,38 @@ const styles = StyleSheet.create({
     color: PlatformColor('label'),
     textAlign: 'center',
   },
+  frontSentence: {
+    fontSize: 18,
+    color: PlatformColor('secondaryLabel'),
+    textAlign: 'center',
+    marginTop: 20,
+    paddingHorizontal: 8,
+    lineHeight: 26,
+  },
   tapHint: {
     fontSize: 14,
     color: PlatformColor('tertiaryLabel'),
-    marginTop: 16,
+    marginTop: 20,
+  },
+  backWordContainer: {
+    alignItems: 'center',
+    paddingTop: 16,
+    paddingBottom: 8,
+  },
+  backWord: {
+    fontSize: 40,
+    fontWeight: '600',
+    color: PlatformColor('label'),
+    textAlign: 'center',
+  },
+  reading: {
+    fontSize: 22,
+    color: PlatformColor('secondaryLabel'),
+    textAlign: 'center',
+    marginTop: 4,
   },
   answerContainer: {
     paddingTop: 8,
-  },
-  reading: {
-    fontSize: 28,
-    color: PlatformColor('secondaryLabel'),
-    textAlign: 'center',
-    marginBottom: 16,
   },
   divider: {
     height: StyleSheet.hairlineWidth,
@@ -149,7 +217,7 @@ const styles = StyleSheet.create({
     marginVertical: 16,
   },
   definitionsContainer: {
-    gap: 8,
+    gap: 6,
   },
   definition: {
     fontSize: 16,
@@ -161,6 +229,30 @@ const styles = StyleSheet.create({
     color: PlatformColor('tertiaryLabel'),
     fontStyle: 'italic',
     marginTop: 4,
+  },
+  sentenceContainer: {
+    gap: 8,
+  },
+  sentence: {
+    fontSize: 16,
+    color: PlatformColor('label'),
+    lineHeight: 24,
+  },
+  translatedSentence: {
+    fontSize: 14,
+    color: PlatformColor('secondaryLabel'),
+    lineHeight: 20,
+    fontStyle: 'italic',
+  },
+  imageContainer: {
+    marginTop: 16,
+    borderRadius: 12,
+    overflow: 'hidden',
+  },
+  image: {
+    width: '100%',
+    height: 160,
+    borderRadius: 12,
   },
   splitContainer: {
     position: 'relative',

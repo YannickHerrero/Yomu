@@ -5,7 +5,6 @@ import {
   StyleSheet,
   PlatformColor,
   FlatList,
-  Alert,
   RefreshControl,
 } from 'react-native';
 import { useFocusEffect } from 'expo-router';
@@ -13,35 +12,42 @@ import { Host, Picker } from '@expo/ui/swift-ui';
 import { GlassView } from 'expo-glass-effect';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { useDeckStore, type DeckCard } from '@/stores/useDeckStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { CardListItem } from '@/components/review/CardListItem';
+import { EditCardSheet } from '@/components/review/EditCardSheet';
+import { deleteCardImage } from '@/utils/imageStorage';
 import { getGroupFromStage } from '@/constants/srs';
 
 type SortOption = 'added' | 'stage' | 'due' | 'alphabetical';
-type FilterOption = 'all' | 'apprentice' | 'guru' | 'master' | 'enlightened';
+type FilterOption = 'all' | 'new' | 'apprentice' | 'guru' | 'master' | 'enlightened';
 
 const sortLabels: string[] = ['Recently Added', 'Stage', 'Due Date', 'Alphabetical'];
 const sortValues: SortOption[] = ['added', 'stage', 'due', 'alphabetical'];
 
-const filterLabels: string[] = ['All', 'Apprentice', 'Guru', 'Master', 'Enlightened'];
-const filterValues: FilterOption[] = ['all', 'apprentice', 'guru', 'master', 'enlightened'];
+const filterLabels: string[] = ['All', 'New', 'Apprentice', 'Guru', 'Master', 'Enlightened'];
+const filterValues: FilterOption[] = ['all', 'new', 'apprentice', 'guru', 'master', 'enlightened'];
 
 export default function DeckScreen() {
   const { db } = useDatabase();
   const { cards, isLoading, loadAllData, removeCard } = useDeckStore();
+  const { loadApiKey } = useSettingsStore();
 
   const [sortIndex, setSortIndex] = useState<number>(0);
   const [filterIndex, setFilterIndex] = useState<number>(0);
   const [refreshing, setRefreshing] = useState(false);
+  const [selectedCard, setSelectedCard] = useState<DeckCard | null>(null);
+  const [isEditSheetOpen, setIsEditSheetOpen] = useState(false);
 
   const sortBy = sortValues[sortIndex];
   const filterBy = filterValues[filterIndex];
 
-  // Load data on mount
+  // Load data and settings on mount
   useEffect(() => {
     if (db) {
       loadAllData(db);
     }
-  }, [db, loadAllData]);
+    loadApiKey();
+  }, [db, loadAllData, loadApiKey]);
 
   // Refresh data when screen comes into focus
   useFocusEffect(
@@ -63,32 +69,33 @@ export default function DeckScreen() {
     }
   }, [db, loadAllData]);
 
-  // Handle delete card
-  const handleDeleteCard = useCallback(
-    (card: DeckCard) => {
-      Alert.alert(
-        'Remove Card',
-        `Remove "${card.kanji || card.reading}" from your deck? Your progress will be lost.`,
-        [
-          { text: 'Cancel', style: 'cancel' },
-          {
-            text: 'Remove',
-            style: 'destructive',
-            onPress: async () => {
-              if (db) {
-                try {
-                  await removeCard(db, card.id);
-                } catch (error) {
-                  console.error('Failed to remove card:', error);
-                }
-              }
-            },
-          },
-        ]
-      );
-    },
-    [db, removeCard]
-  );
+  // Handle card press - opens edit sheet
+  const handleCardPress = useCallback((card: DeckCard) => {
+    setSelectedCard(card);
+    setIsEditSheetOpen(true);
+  }, []);
+
+  // Handle close edit sheet
+  const handleCloseEditSheet = useCallback(() => {
+    setIsEditSheetOpen(false);
+    setTimeout(() => setSelectedCard(null), 300);
+  }, []);
+
+  // Handle delete card from edit sheet
+  const handleDeleteCard = useCallback(async () => {
+    if (!db || !selectedCard) return;
+
+    try {
+      // Delete image if exists
+      if (selectedCard.imagePath) {
+        await deleteCardImage(selectedCard.imagePath);
+      }
+      await removeCard(db, selectedCard.id);
+      handleCloseEditSheet();
+    } catch (error) {
+      console.error('Failed to remove card:', error);
+    }
+  }, [db, selectedCard, removeCard, handleCloseEditSheet]);
 
   // Filter and sort cards
   const filteredAndSortedCards = useMemo(() => {
@@ -130,10 +137,10 @@ export default function DeckScreen() {
   const renderItem = useCallback(
     ({ item }: { item: DeckCard }) => (
       <View style={styles.cardItem}>
-        <CardListItem card={item} onPress={() => handleDeleteCard(item)} />
+        <CardListItem card={item} onPress={() => handleCardPress(item)} />
       </View>
     ),
-    [handleDeleteCard]
+    [handleCardPress]
   );
 
   // Key extractor
@@ -228,6 +235,16 @@ export default function DeckScreen() {
           <RefreshControl refreshing={refreshing} onRefresh={handleRefresh} />
         }
       />
+
+      {/* Edit Card Sheet */}
+      {selectedCard && (
+        <EditCardSheet
+          card={selectedCard}
+          isOpen={isEditSheetOpen}
+          onClose={handleCloseEditSheet}
+          onDelete={handleDeleteCard}
+        />
+      )}
     </View>
   );
 }
