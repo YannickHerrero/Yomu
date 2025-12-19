@@ -1,12 +1,13 @@
-import React, { useCallback, useEffect, useRef } from 'react';
+import React, { useCallback, useEffect, useRef, useState } from 'react';
 import { FlatList, ActivityIndicator, View, Text, StyleSheet, PlatformColor } from 'react-native';
 import { useFocusEffect } from 'expo-router';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { SearchBar, type SearchBarRef } from '@/components/dictionary/SearchBar';
 import { DictionaryEntry } from '@/components/dictionary/DictionaryEntry';
+import { AddCardSheet } from '@/components/dictionary/AddCardSheet';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { useDictionaryStore } from '@/stores/useDictionaryStore';
-import { useDeckStore } from '@/stores/useDeckStore';
+import { useSettingsStore } from '@/stores/useSettingsStore';
 import { searchDictionary, getInDeckStatus } from '@/database/dictionary';
 import { removeCardByDictionaryId } from '@/database/deck';
 import type { DictionaryEntry as DictionaryEntryType } from '@/database/dictionary';
@@ -34,7 +35,15 @@ export default function DictionaryScreen() {
     clearResults,
   } = useDictionaryStore();
   
-  const { addCard } = useDeckStore();
+  // Load settings on mount
+  const { loadApiKey } = useSettingsStore();
+  useEffect(() => {
+    loadApiKey();
+  }, [loadApiKey]);
+
+  // State for add card sheet
+  const [selectedEntry, setSelectedEntry] = useState<DictionaryEntryType | null>(null);
+  const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const offsetRef = useRef(0);
@@ -139,21 +148,28 @@ export default function DictionaryScreen() {
     }
   }, [isLoading, hasMore, searchQuery, performSearch]);
 
-  // Handle add to deck
+  // Handle add to deck - opens sheet
   const handleAddToDeck = useCallback(
-    async (entry: DictionaryEntryType) => {
-      if (!db) return;
-
-      try {
-        await addCard(db, entry.id);
-        addToDeckIds(entry.id);
-      } catch (err) {
-        console.error('Failed to add to deck:', err);
-        throw err;
-      }
+    (entry: DictionaryEntryType) => {
+      setSelectedEntry(entry);
+      setIsSheetOpen(true);
     },
-    [db, addCard, addToDeckIds]
+    []
   );
+
+  // Handle successful card addition
+  const handleCardAdded = useCallback(() => {
+    if (selectedEntry) {
+      addToDeckIds(selectedEntry.id);
+    }
+  }, [selectedEntry, addToDeckIds]);
+
+  // Handle sheet close
+  const handleSheetClose = useCallback(() => {
+    setIsSheetOpen(false);
+    // Clear selected entry after a delay to avoid UI flash
+    setTimeout(() => setSelectedEntry(null), 300);
+  }, []);
 
   // Handle remove from deck
   const handleRemoveFromDeck = useCallback(
@@ -177,7 +193,10 @@ export default function DictionaryScreen() {
       <DictionaryEntry
         entry={item}
         isInDeck={inDeckIds.has(item.id)}
-        onAddToDeck={() => handleAddToDeck(item)}
+        onAddToDeck={() => {
+          handleAddToDeck(item);
+          return Promise.resolve();
+        }}
         onRemoveFromDeck={() => handleRemoveFromDeck(item)}
       />
     ),
@@ -281,6 +300,16 @@ export default function DictionaryScreen() {
         <View style={styles.loadingOverlay}>
           <ActivityIndicator size="large" />
         </View>
+      )}
+
+      {/* Add Card Sheet */}
+      {selectedEntry && (
+        <AddCardSheet
+          entry={selectedEntry}
+          isOpen={isSheetOpen}
+          onClose={handleSheetClose}
+          onSuccess={handleCardAdded}
+        />
       )}
     </View>
   );
