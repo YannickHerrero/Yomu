@@ -3,6 +3,7 @@ import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
 import { useEffect } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
+import { Camera } from 'expo-camera';
 import 'react-native-reanimated';
 
 import { useColorScheme } from '@/hooks/use-color-scheme';
@@ -23,11 +24,14 @@ export const unstable_settings = {
 export default function RootLayout() {
   const colorScheme = useColorScheme();
 
-  // Initialize badge system on mount
+  // Initialize permissions and badge system on mount
   useEffect(() => {
-    async function initBadge() {
+    async function initPermissions() {
       // Request notification permissions (required for badge)
       await requestNotificationPermissions();
+
+      // Request camera permissions
+      await Camera.requestCameraPermissionsAsync();
 
       // Register background fetch task
       await registerBackgroundFetch();
@@ -36,7 +40,7 @@ export default function RootLayout() {
       await updateBadgeCount();
     }
 
-    initBadge();
+    initPermissions();
   }, []);
 
   // Update badge when app comes to foreground
