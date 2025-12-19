@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useRef } from 'react';
 import { View, Text, StyleSheet, PlatformColor, ScrollView } from 'react-native';
 import { router } from 'expo-router';
 import { GlassView } from 'expo-glass-effect';
@@ -11,11 +11,12 @@ import { ReviewButtons } from '@/components/review/ReviewButtons';
 export default function ReviewSessionScreen() {
   const { db } = useDatabase();
   const { session, revealCard, submitAnswer, endSession, loadAllData } = useDeckStore();
+  const isNavigatingRef = useRef(false);
 
-  // If no session, redirect back
+  // If no session on initial load (e.g., direct navigation), redirect to review index
   useEffect(() => {
-    if (!session) {
-      router.back();
+    if (!session && !isNavigatingRef.current) {
+      router.replace('/review');
     }
   }, [session]);
 
@@ -34,12 +35,14 @@ export default function ReviewSessionScreen() {
   }, [db, submitAnswer]);
 
   const handleDone = useCallback(async () => {
-    endSession();
-    // Refresh data before going back
+    isNavigatingRef.current = true;
+    // Refresh data before ending session
     if (db) {
       await loadAllData(db);
     }
-    router.back();
+    endSession();
+    // Use replace to navigate back to review index (avoids GO_BACK issues)
+    router.replace('/review');
   }, [endSession, loadAllData, db]);
 
   // No session state
