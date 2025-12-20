@@ -1,7 +1,8 @@
 import { DarkTheme, DefaultTheme, ThemeProvider } from '@react-navigation/native';
 import { Stack } from 'expo-router';
 import { StatusBar } from 'expo-status-bar';
-import { useEffect } from 'react';
+import * as SplashScreen from 'expo-splash-screen';
+import { useEffect, useCallback } from 'react';
 import { AppState, AppStateStatus } from 'react-native';
 import { Camera } from 'expo-camera';
 import 'react-native-reanimated';
@@ -9,7 +10,8 @@ import 'react-native-reanimated';
 import { useColorScheme } from '@/hooks/use-color-scheme';
 
 import { GluestackUIProvider } from '@/components/ui/gluestack-ui-provider';
-import { DatabaseProvider } from '@/contexts/DatabaseContext';
+import { DatabaseProvider, useDatabase } from '@/contexts/DatabaseContext';
+import { LoadingScreen } from '@/components/LoadingScreen';
 import {
   registerBackgroundFetch,
   requestNotificationPermissions,
@@ -17,15 +19,26 @@ import {
 } from '@/utils/backgroundBadgeTask';
 import '@/global.css';
 
+// Prevent the splash screen from auto-hiding
+SplashScreen.preventAutoHideAsync();
+
 export const unstable_settings = {
   anchor: '(tabs)',
 };
 
-export default function RootLayout() {
+function RootLayoutContent() {
   const colorScheme = useColorScheme();
+  const { isLoading, loadingMessage, error, retry } = useDatabase();
 
-  // Initialize permissions and badge system on mount
+  // Hide splash screen once we're ready to show our custom loading UI
+  const onLayoutReady = useCallback(async () => {
+    await SplashScreen.hideAsync();
+  }, []);
+
+  // Initialize permissions and badge system ONLY after database is ready
   useEffect(() => {
+    if (isLoading || error) return;
+
     async function initPermissions() {
       // Request notification permissions (required for badge)
       await requestNotificationPermissions();
@@ -41,7 +54,7 @@ export default function RootLayout() {
     }
 
     initPermissions();
-  }, []);
+  }, [isLoading, error]);
 
   // Update badge when app comes to foreground
   useEffect(() => {
@@ -56,15 +69,38 @@ export default function RootLayout() {
     };
   }, []);
 
+  // Show loading screen while database is initializing
+  if (isLoading || error) {
+    return (
+      <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+        <LoadingScreen
+          message={loadingMessage}
+          error={error}
+          onRetry={retry}
+          onLayout={onLayoutReady}
+        />
+        <StatusBar style="auto" />
+      </ThemeProvider>
+    );
+  }
+
+  return (
+    <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
+      <Stack>
+        <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
+      </Stack>
+      <StatusBar style="auto" />
+    </ThemeProvider>
+  );
+}
+
+export default function RootLayout() {
+  const colorScheme = useColorScheme();
+
   return (
     <GluestackUIProvider mode={colorScheme ?? 'dark'}>
       <DatabaseProvider>
-        <ThemeProvider value={colorScheme === 'dark' ? DarkTheme : DefaultTheme}>
-          <Stack>
-            <Stack.Screen name="(tabs)" options={{ headerShown: false }} />
-          </Stack>
-          <StatusBar style="auto" />
-        </ThemeProvider>
+        <RootLayoutContent />
       </DatabaseProvider>
     </GluestackUIProvider>
   );
