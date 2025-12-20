@@ -157,9 +157,17 @@ The spaced repetition algorithm follows WaniKani's proven formula:
 
 The app requires a pre-built dictionary database. To build it from JMdict:
 
-```bash
-npm run build:dictionary
-```
+1. Download `JMdict_english.zip` (without example sentences) from [yomidevs/jmdict-yomitan](https://github.com/yomidevs/jmdict-yomitan/releases)
+
+2. Extract the contents to `assets/JMdict_english/`:
+   ```bash
+   unzip JMdict_english.zip -d assets/JMdict_english
+   ```
+
+3. Run the build script:
+   ```bash
+   npm run build:dictionary
+   ```
 
 This converts JMdict data to SQLite format with full-text search indexing.
 

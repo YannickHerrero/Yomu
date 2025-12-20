@@ -41,3 +41,7 @@ app-example
 # generated native folders
 /ios
 /android
+
+# Dictionary files (downloaded and generated)
+assets/JMdict_english/
+assets/jmdict.db
