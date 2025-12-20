@@ -207,7 +207,6 @@ export default function TabLayout() {
 - **UI Components**: Native SwiftUI via `@expo/ui`, glass effects via `expo-glass-effect`
 
 ## Additional Notes
-- See `PRD.md` for complete feature specifications and technical architecture
 - Japanese text rendering: System font with proper Japanese locale support
 - Path aliases configured in `tsconfig.json` and `babel.config.js`
 - Theme follows iOS system appearance automatically (no manual toggle needed)
