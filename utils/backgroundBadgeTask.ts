@@ -4,6 +4,7 @@ import * as Notifications from 'expo-notifications';
 import * as SQLite from 'expo-sqlite';
 
 const BACKGROUND_FETCH_TASK = 'background-badge-update';
+const SRS_NEW_STAGE = 0;
 const SRS_BURNED_STAGE = 9;
 
 /**
@@ -18,11 +19,11 @@ export async function updateBadgeCount(): Promise<number> {
     // expo-sqlite reuses existing connections, so this is safe to call multiple times
     const appDb = await SQLite.openDatabaseAsync('yomu.db');
 
-    // Query due card count (deck_cards is in main db, no dict attachment needed)
+    // Query due card count (excludes new cards - stage 0)
     const now = new Date().toISOString();
     const result = await appDb.getFirstAsync<{ count: number }>(
-      `SELECT COUNT(*) as count FROM deck_cards WHERE stage < ? AND due_date <= ?`,
-      [SRS_BURNED_STAGE, now]
+      `SELECT COUNT(*) as count FROM deck_cards WHERE stage > ? AND stage < ? AND due_date <= ?`,
+      [SRS_NEW_STAGE, SRS_BURNED_STAGE, now]
     );
 
     const dueCount = result?.count ?? 0;
