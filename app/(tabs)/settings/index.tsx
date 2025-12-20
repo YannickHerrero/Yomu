@@ -10,7 +10,7 @@ import {
   Pressable,
 } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
-import { Host, Picker, Button } from '@expo/ui/swift-ui';
+import { Host, Picker, Button, Switch } from '@expo/ui/swift-ui';
 import { useDatabase } from '@/contexts/DatabaseContext';
 import { getDeckStats, addMockCards } from '@/database/deck';
 import { getTotalReviews, getStudyDays } from '@/database/stats';
@@ -18,6 +18,15 @@ import { addMockReviewHistory } from '@/database/reviewHistory';
 import { useThemeStore } from '@/stores/useThemeStore';
 import { useSettingsStore } from '@/stores/useSettingsStore';
 import { validateApiKey } from '@/utils/deepl';
+import {
+  exportBackup,
+  shareBackup,
+  pickBackupFile,
+  validateBackup,
+  importBackup,
+  cleanupOldBackups,
+} from '@/utils/backup';
+import { deleteAllCardImages } from '@/utils/imageStorage';
 import Constants from 'expo-constants';
 
 const NEW_CARDS_BATCH_OPTIONS = [5, 10, 15, 20, 25, 30];
@@ -45,6 +54,9 @@ export default function SettingsScreen() {
   const [dataStats, setDataStats] = useState<DataStats | null>(null);
   const [isResetting, setIsResetting] = useState(false);
   const [isAddingMock, setIsAddingMock] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
+  const [isImporting, setIsImporting] = useState(false);
+  const [includeApiKeyInExport, setIncludeApiKeyInExport] = useState(false);
 
   const appVersion = Constants.expoConfig?.version ?? '1.0.0';
 
@@ -179,6 +191,10 @@ export default function SettingsScreen() {
 
             setIsResetting(true);
             try {
+              // Delete all card images first
+              await deleteAllCardImages();
+              
+              // Then clear database tables
               await db.execAsync(`
                 DELETE FROM review_history;
                 DELETE FROM deck_cards;
@@ -203,6 +219,100 @@ export default function SettingsScreen() {
   const handleOpenGitHub = useCallback(() => {
     Linking.openURL('https://github.com/YannickHerrero/Yomu');
   }, []);
+
+  // Handle export backup
+  const handleExportBackup = useCallback(async () => {
+    if (!db) return;
+
+    setIsExporting(true);
+    try {
+      const zipPath = await exportBackup(db, appVersion, includeApiKeyInExport);
+      await shareBackup(zipPath);
+      await cleanupOldBackups();
+    } catch (err) {
+      console.error('Failed to export backup:', err);
+      Alert.alert('Export Failed', 'Failed to create backup. Please try again.');
+    } finally {
+      setIsExporting(false);
+    }
+  }, [db, appVersion, includeApiKeyInExport]);
+
+  // Handle import backup
+  const handleImportBackup = useCallback(() => {
+    Alert.alert(
+      'Import Backup',
+      'This will replace all your current data with the backup data. This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Choose File',
+          onPress: async () => {
+            if (!db) return;
+
+            try {
+              const zipPath = await pickBackupFile();
+              if (!zipPath) return;
+
+              setIsImporting(true);
+
+              // Validate backup first
+              const validation = await validateBackup(zipPath);
+              if (!validation.isValid) {
+                Alert.alert('Invalid Backup', validation.error || 'The backup file is invalid.');
+                setIsImporting(false);
+                return;
+              }
+
+              // Show confirmation with backup info
+              const data = validation.data!;
+              const hasApiKey = !!data.settings.deepl_api_key;
+
+              Alert.alert(
+                'Confirm Import',
+                `This backup contains:\n` +
+                  `- ${data.data.deck_cards.length} cards\n` +
+                  `- ${data.data.review_history.length} reviews\n` +
+                  `- ${data.data.reading_sessions.length} sessions\n` +
+                  `- ${data.image_files.length} images\n` +
+                  (hasApiKey ? `- DeepL API key\n` : '') +
+                  `\nCreated: ${new Date(data.exported_at).toLocaleDateString()}`,
+                [
+                  {
+                    text: 'Cancel',
+                    style: 'cancel',
+                    onPress: () => setIsImporting(false),
+                  },
+                  {
+                    text: 'Import',
+                    style: 'destructive',
+                    onPress: async () => {
+                      const result = await importBackup(db, zipPath, hasApiKey);
+                      setIsImporting(false);
+
+                      if (result.success) {
+                        await loadStats();
+                        await loadSettings();
+                        Alert.alert(
+                          'Import Successful',
+                          `Imported ${result.stats?.cards} cards, ${result.stats?.reviews} reviews, and ${result.stats?.sessions} sessions.`
+                        );
+                      } else {
+                        Alert.alert('Import Failed', result.error || 'Failed to import backup.');
+                      }
+                    },
+                  },
+                ]
+              );
+            } catch (err) {
+              console.error('Failed to import backup:', err);
+              Alert.alert('Import Failed', 'Failed to import backup. Please try again.');
+              setIsImporting(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [db, loadStats, loadSettings]);
 
   // Handle add mock data
   const handleAddMockData = useCallback(() => {
@@ -363,6 +473,63 @@ export default function SettingsScreen() {
           </View>
         </GlassView>
 
+        {/* Export Backup */}
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          <View style={styles.linkRow}>
+            <View style={styles.linkInfo}>
+              <Text style={styles.linkTitle}>Export Backup</Text>
+              <Text style={styles.linkDescription}>
+                Save all data to a file
+              </Text>
+            </View>
+            <View style={styles.buttonContainer}>
+              <Host matchContents>
+                <Button
+                  onPress={handleExportBackup}
+                  variant="bordered"
+                  disabled={isExporting}
+                >
+                  {isExporting ? 'Exporting...' : 'Export'}
+                </Button>
+              </Host>
+            </View>
+          </View>
+
+          <View style={styles.divider} />
+
+          <View style={styles.switchRow}>
+            <Text style={styles.switchLabel}>Include API Key</Text>
+            <Host matchContents>
+              <Switch
+                value={includeApiKeyInExport}
+                onValueChange={setIncludeApiKeyInExport}
+              />
+            </Host>
+          </View>
+        </GlassView>
+
+        {/* Import Backup */}
+        <GlassView style={styles.card} glassEffectStyle="regular">
+          <View style={styles.linkRow}>
+            <View style={styles.linkInfo}>
+              <Text style={styles.linkTitle}>Import Backup</Text>
+              <Text style={styles.linkDescription}>
+                Restore from a backup file
+              </Text>
+            </View>
+            <View style={styles.buttonContainer}>
+              <Host matchContents>
+                <Button
+                  onPress={handleImportBackup}
+                  variant="bordered"
+                  disabled={isImporting}
+                >
+                  {isImporting ? 'Importing...' : 'Import'}
+                </Button>
+              </Host>
+            </View>
+          </View>
+        </GlassView>
       </View>
 
       {/* About Section */}
@@ -646,5 +813,13 @@ const styles = StyleSheet.create({
     color: PlatformColor('secondaryLabel'),
     marginTop: 2,
   },
-  
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+  },
+  switchLabel: {
+    fontSize: 15,
+    color: PlatformColor('secondaryLabel'),
+  },
 });

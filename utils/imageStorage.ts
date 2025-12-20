@@ -106,3 +106,19 @@ export async function cardImageExists(imagePath: string | null): Promise<boolean
     return false;
   }
 }
+
+/**
+ * Delete all card images (used when resetting learning progress)
+ */
+export async function deleteAllCardImages(): Promise<void> {
+  const dir = getCardImagesDirectory();
+
+  try {
+    const info = await FileSystem.getInfoAsync(dir);
+    if (info.exists) {
+      await FileSystem.deleteAsync(dir, { idempotent: true });
+    }
+  } catch (error) {
+    console.error('Failed to delete card images directory:', error);
+  }
+}
