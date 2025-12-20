@@ -26,12 +26,7 @@ export default function TabLayout() {
         <Label>Stats</Label>
       </NativeTabs.Trigger>
 
-      <NativeTabs.Trigger
-        name="settings/index"
-        options={{
-          title: 'Settings',
-        }}
-      >
+      <NativeTabs.Trigger name="settings">
         <Icon sf="gearshape.fill" />
         <Label>Settings</Label>
       </NativeTabs.Trigger>

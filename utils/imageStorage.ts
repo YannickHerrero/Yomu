@@ -122,3 +122,52 @@ export async function deleteAllCardImages(): Promise<void> {
     console.error('Failed to delete card images directory:', error);
   }
 }
+
+/**
+ * Get the total size of all card images in bytes
+ */
+export async function getCardImagesSize(): Promise<number> {
+  const dir = getCardImagesDirectory();
+
+  try {
+    const info = await FileSystem.getInfoAsync(dir);
+    if (!info.exists) {
+      return 0;
+    }
+
+    const files = await FileSystem.readDirectoryAsync(dir);
+    let totalSize = 0;
+
+    for (const file of files) {
+      const fileInfo = await FileSystem.getInfoAsync(`${dir}${file}`);
+      if (fileInfo.exists && 'size' in fileInfo) {
+        totalSize += (fileInfo as { size: number }).size ?? 0;
+      }
+    }
+
+    return totalSize;
+  } catch (error) {
+    console.error('Failed to get card images size:', error);
+    return 0;
+  }
+}
+
+/**
+ * Get the number of card images
+ */
+export async function getCardImagesCount(): Promise<number> {
+  const dir = getCardImagesDirectory();
+
+  try {
+    const info = await FileSystem.getInfoAsync(dir);
+    if (!info.exists) {
+      return 0;
+    }
+
+    const files = await FileSystem.readDirectoryAsync(dir);
+    return files.length;
+  } catch (error) {
+    console.error('Failed to get card images count:', error);
+    return 0;
+  }
+}
