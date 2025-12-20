@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { View, Text, StyleSheet, PlatformColor, Pressable, ScrollView } from 'react-native';
 import { GlassView } from 'expo-glass-effect';
 import type { HeatmapData } from '@/database/stats';
@@ -15,33 +15,44 @@ type CellData = {
 
 export function Heatmap({ data }: HeatmapProps) {
   const [selectedCell, setSelectedCell] = useState<CellData | null>(null);
+  const scrollViewRef = useRef<ScrollView>(null);
 
-  // Generate full year grid (current year, 52 weeks)
-  const currentYear = new Date().getFullYear();
-  const startDate = new Date(currentYear, 0, 1); // Jan 1
-  const endDate = new Date(); // Today
+  // Scroll to the right (current week) on mount
+  useEffect(() => {
+    // Small delay to ensure layout is complete
+    const timer = setTimeout(() => {
+      scrollViewRef.current?.scrollToEnd({ animated: false });
+    }, 50);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Generate 52 weeks ending at today (like GitHub)
+  const today = new Date();
+  const endDate = new Date(today);
+  
+  // Calculate start date: 52 weeks ago, aligned to Sunday
+  const startDate = new Date(today);
+  startDate.setDate(startDate.getDate() - (52 * 7) - today.getDay());
+
+  // Determine year label (show range if spanning two years)
+  const startYear = startDate.getFullYear();
+  const endYear = endDate.getFullYear();
+  const yearLabel = startYear === endYear ? `${endYear}` : `${startYear}-${endYear}`;
 
   // Build a map of dates to counts
   const dataMap = new Map(data.map((d) => [d.date, d.count]));
 
   // Generate grid: 52 weeks × 7 days
   const weeks: CellData[][] = [];
-  let currentDate = new Date(startDate);
-
-  // Start from the first Sunday of the year or the first day
-  const dayOfWeek = currentDate.getDay();
-  if (dayOfWeek !== 0) {
-    currentDate.setDate(currentDate.getDate() - dayOfWeek);
-  }
+  const currentDate = new Date(startDate);
 
   while (currentDate <= endDate) {
     const week: CellData[] = [];
     for (let day = 0; day < 7; day++) {
       const dateString = currentDate.toISOString().split('T')[0];
       const count = dataMap.get(dateString) ?? 0;
-      const isCurrentYear = currentDate.getFullYear() === currentYear;
 
-      if (isCurrentYear && currentDate <= endDate) {
+      if (currentDate <= endDate) {
         week.push({
           date: dateString,
           count,
@@ -51,7 +62,7 @@ export function Heatmap({ data }: HeatmapProps) {
               : undefined,
         });
       } else {
-        week.push({ date: '', count: -1 }); // Empty cell
+        week.push({ date: '', count: -1 }); // Empty cell (future dates)
       }
 
       currentDate.setDate(currentDate.getDate() + 1);
@@ -77,12 +88,14 @@ export function Heatmap({ data }: HeatmapProps) {
       <View style={styles.content}>
         <View style={styles.header}>
           <Text style={styles.title}>Study Days</Text>
-          <Text style={styles.yearLabel}>{currentYear}</Text>
+          <Text style={styles.yearLabel}>{yearLabel}</Text>
         </View>
 
-        <ScrollView horizontal showsHorizontalScrollIndicator={false}>
-          <View style={styles.grid}>
-            {/* Day labels */}
+        <View style={styles.gridContainer}>
+          {/* Day labels - fixed on the left */}
+          <View style={styles.dayLabelsColumn}>
+            {/* Spacer for month row alignment */}
+            <View style={styles.dayLabelSpacer} />
             <View style={styles.dayLabels}>
               <Text style={styles.dayLabel}>S</Text>
               <Text style={styles.dayLabel}>M</Text>
@@ -92,47 +105,52 @@ export function Heatmap({ data }: HeatmapProps) {
               <Text style={styles.dayLabel}>F</Text>
               <Text style={styles.dayLabel}>S</Text>
             </View>
-
-            {/* Month labels row */}
-            <View style={styles.monthRow}>
-              {weeks.map((week, weekIndex) => {
-                const monthLabel = week.find((cell) => cell.month)?.month;
-                return (
-                  <View key={weekIndex} style={styles.monthLabelContainer}>
-                    {monthLabel && <Text style={styles.monthLabel}>{monthLabel}</Text>}
-                  </View>
-                );
-              })}
-            </View>
-
-            {/* Heatmap grid */}
-            <View style={styles.heatmapGrid}>
-              {weeks.map((week, weekIndex) => (
-                <View key={weekIndex} style={styles.weekColumn}>
-                  {week.map((cell, dayIndex) => (
-                    <Pressable
-                      key={`${weekIndex}-${dayIndex}`}
-                      onPress={() =>
-                        cell.count >= 0 ? setSelectedCell(cell) : null
-                      }
-                      disabled={cell.count === -1}
-                    >
-                      <View
-                        style={[
-                          styles.cell,
-                          {
-                            backgroundColor: PlatformColor(getColor(cell.count) as any),
-                            opacity: getOpacity(cell.count),
-                          },
-                        ]}
-                      />
-                    </Pressable>
-                  ))}
-                </View>
-              ))}
-            </View>
           </View>
-        </ScrollView>
+
+          {/* Scrollable heatmap */}
+          <ScrollView ref={scrollViewRef} horizontal showsHorizontalScrollIndicator={false}>
+            <View style={styles.grid}>
+              {/* Month labels row */}
+              <View style={styles.monthRow}>
+                {weeks.map((week, weekIndex) => {
+                  const monthLabel = week.find((cell) => cell.month)?.month;
+                  return (
+                    <View key={weekIndex} style={styles.monthLabelContainer}>
+                      {monthLabel && <Text style={styles.monthLabel}>{monthLabel}</Text>}
+                    </View>
+                  );
+                })}
+              </View>
+
+              {/* Heatmap grid */}
+              <View style={styles.heatmapGrid}>
+                {weeks.map((week, weekIndex) => (
+                  <View key={weekIndex} style={styles.weekColumn}>
+                    {week.map((cell, dayIndex) => (
+                      <Pressable
+                        key={`${weekIndex}-${dayIndex}`}
+                        onPress={() =>
+                          cell.count >= 0 ? setSelectedCell(cell) : null
+                        }
+                        disabled={cell.count === -1}
+                      >
+                        <View
+                          style={[
+                            styles.cell,
+                            {
+                              backgroundColor: PlatformColor(getColor(cell.count) as any),
+                              opacity: getOpacity(cell.count),
+                            },
+                          ]}
+                        />
+                      </Pressable>
+                    ))}
+                  </View>
+                ))}
+              </View>
+            </View>
+          </ScrollView>
+        </View>
 
         {/* Legend */}
         <View style={styles.legend}>
@@ -193,12 +211,20 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: PlatformColor('secondaryLabel'),
   },
+  gridContainer: {
+    flexDirection: 'row',
+  },
+  dayLabelsColumn: {
+    marginRight: 8,
+  },
+  dayLabelSpacer: {
+    height: 18, // Match month row height (14) + marginBottom (4)
+  },
   grid: {
-    gap: 8,
+    gap: 4,
   },
   dayLabels: {
     gap: 3,
-    marginRight: 8,
   },
   dayLabel: {
     fontSize: 10,

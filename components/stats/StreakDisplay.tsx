@@ -1,4 +1,5 @@
 import { View, Text, StyleSheet, PlatformColor } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 import { GlassView } from 'expo-glass-effect';
 
 type StreakDisplayProps = {
@@ -12,7 +13,11 @@ export function StreakDisplay({ currentStreak, bestStreak }: StreakDisplayProps)
       <View style={styles.content}>
         <View style={styles.streakSection}>
           <View style={styles.iconContainer}>
-            <Text style={styles.icon}>◆</Text>
+            <SymbolView
+              name="flame.fill"
+              style={styles.icon}
+              tintColor={PlatformColor('label')}
+            />
           </View>
           <View style={styles.streakText}>
             <Text style={styles.streakValue}>{currentStreak}</Text>
@@ -51,8 +56,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   icon: {
-    fontSize: 40,
-    color: PlatformColor('label'),
+    width: 40,
+    height: 40,
   },
   streakText: {
     flex: 1,

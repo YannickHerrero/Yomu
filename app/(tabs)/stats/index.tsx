@@ -122,14 +122,12 @@ export default function StatsScreen() {
       </View>
 
       {/* Streak */}
-      {stats.currentStreak > 0 && (
-        <View style={styles.section}>
-          <StreakDisplay
-            currentStreak={stats.currentStreak}
-            bestStreak={stats.bestStreak}
-          />
-        </View>
-      )}
+      <View style={styles.section}>
+        <StreakDisplay
+          currentStreak={stats.currentStreak}
+          bestStreak={stats.bestStreak}
+        />
+      </View>
 
       {/* Performance */}
       {stats.totalReviews > 0 && (

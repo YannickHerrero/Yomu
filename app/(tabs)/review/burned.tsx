@@ -7,6 +7,7 @@ import {
   FlatList,
   RefreshControl,
 } from 'react-native';
+import { SymbolView } from 'expo-symbols';
 import { useFocusEffect } from 'expo-router';
 import { GlassView } from 'expo-glass-effect';
 import { useDatabase } from '@/contexts/DatabaseContext';
@@ -85,7 +86,11 @@ export default function BurnedCardsScreen() {
     return (
       <View style={styles.emptyContainer}>
         <GlassView style={styles.emptyCard} glassEffectStyle="regular">
-          <Text style={styles.emptyIcon}>🔥</Text>
+          <SymbolView
+            name="flame.fill"
+            style={styles.emptyIcon}
+            tintColor={PlatformColor('secondaryLabel')}
+          />
           <Text style={styles.emptyTitle}>No burned cards yet</Text>
           <Text style={styles.emptyText}>
             Cards that reach the final SRS stage will appear here. Keep reviewing to burn your first
@@ -163,7 +168,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   emptyIcon: {
-    fontSize: 48,
+    width: 48,
+    height: 48,
     marginBottom: 16,
   },
   emptyTitle: {
